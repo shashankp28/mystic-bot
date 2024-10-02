@@ -1,2 +1,3 @@
-# chess-bot
-A simple bot to play chess
+# mystic-bot
+
+A simple bot to play chess using Rust

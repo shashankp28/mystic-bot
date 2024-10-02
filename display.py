@@ -1,7 +1,35 @@
 import os
 import argparse
 from PIL import Image
-from custom import chessBoard
+
+# <<=============  Custom Board =====================>>
+customBoard = [
+    ['BR', 'BN', 'BB', 'BQ', 'BK', 'BB', 'BN', 'BR'],
+    ['BP', 'BP', 'BP', 'BP', 'BP', 'BP', 'BP', 'BP'],
+    [None, None, None, None, None, None, None, None, ],
+    [None, None, None, None, None, None, None, None, ],
+    [None, None, None, None, None, None, None, None, ],
+    [None, None, None, None, None, None, None, None, ],
+    ['WP', 'WP', 'WP', 'WP', 'WP', 'WP', 'WP', 'WP'],
+    ['WR', 'WN', 'WB', 'WQ', 'WK', 'WB', 'WN', 'WR'],
+]
+# <<======================================================>>
+
+
+############   DO NOT EDIT BELOW THIS LINE!!!    ##################
+
+## <<=============  New Board ( For Reference) =====================>>
+newBoard = [
+    ['BR', 'BN', 'BB', 'BQ', 'BK', 'BB', 'BN', 'BR'],
+    ['BP', 'BP', 'BP', 'BP', 'BP', 'BP', 'BP', 'BP'],
+    [None, None, None, None, None, None, None, None, ],
+    [None, None, None, None, None, None, None, None, ],
+    [None, None, None, None, None, None, None, None, ],
+    [None, None, None, None, None, None, None, None, ],
+    ['WP', 'WP', 'WP', 'WP', 'WP', 'WP', 'WP', 'WP'],
+    ['WR', 'WN', 'WB', 'WQ', 'WK', 'WB', 'WN', 'WR'],
+]
+# <<======================================================>>
 
 
 squareSize = 150
@@ -10,6 +38,7 @@ pieceSize = int(0.7 * squareSize)
 pieceImages = {file.split('.')[0]: Image.open(f'img/{file}').convert('RGBA')
                for file in os.listdir('img/') if 'board' not in file
                }
+
 
 for key in pieceImages:
     pieceImages[key] = pieceImages[key].resize(
@@ -39,4 +68,6 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
-    displayBoard(chessBoard, args.output)
+    displayBoard(customBoard, args.output)
+
+#####################################################################
