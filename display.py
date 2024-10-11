@@ -46,14 +46,14 @@ class ChessBoard:
 
     def getDefaultBoard(self):
         return [
-            ['WR', 'WN', 'WB', 'WQ', 'WK', 'WB', 'WN', 'WR'],
+            ['WR', 'WN', 'WB', 'WK', 'WQ', 'WB', 'WN', 'WR'],
             ['WP', 'WP', 'WP', 'WP', 'WP', 'WP', 'WP', 'WP'],
             [None, None, None, None, None, None, None, None, ],
             [None, None, None, None, None, None, None, None, ],
             [None, None, None, None, None, None, None, None, ],
             [None, None, None, None, None, None, None, None, ],
             ['BP', 'BP', 'BP', 'BP', 'BP', 'BP', 'BP', 'BP'],
-            ['BR', 'BN', 'BB', 'BQ', 'BK', 'BB', 'BN', 'BR'],
+            ['BR', 'BN', 'BB', 'BK', 'BQ', 'BB', 'BN', 'BR'],
         ]
 
     def getEmptyBinaryBoard(self):
@@ -115,7 +115,7 @@ class ChessBoard:
         boardImage = Image.open('img/board.png').convert('RGBA')
         for row in range(8):
             for col in range(8):
-                piece = self.board[row][col]
+                piece = self.board[7-row][7-col]
                 if piece:
                     pieceImage = pieceImages[piece]
                     position = (col * squareSize, row * squareSize)
