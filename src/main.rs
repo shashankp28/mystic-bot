@@ -38,7 +38,7 @@ impl Board {
         self.generate_pawn_moves(is_white_turn, &mut legal_boards);
 
         // Remove moves in which the king is in check
-        self.prune_illegal_moves( is_white_turn, &mut legal_boards );
+        self.prune_illegal_moves(is_white_turn, &mut legal_boards);
     
         legal_boards
     }
