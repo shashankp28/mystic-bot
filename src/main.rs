@@ -28,19 +28,17 @@ impl Board {
     pub fn get_legal_moves(&self, is_white_turn: bool) -> Vec<Board> {
         let mut legal_boards = Vec::new();
 
-        // Example: Generate all possible pawn moves for the current player
-        if is_white_turn {
-            self.generate_pawn_moves(true, &mut legal_boards);
-        } else {
-            self.generate_pawn_moves(false, &mut legal_boards);
-        }
+        // Generate all possible legal moves
+        self.generate_rook_moves(is_white_turn, &mut legal_boards);
+        self.generate_knight_moves(is_white_turn, &mut legal_boards);
+        self.generate_bishop_moves(is_white_turn, &mut legal_boards);
+        self.generate_queen_moves(is_white_turn, &mut legal_boards);
+        self.generate_king_moves(is_white_turn, &mut legal_boards);
+        self.generate_pawn_moves(is_white_turn, &mut legal_boards);
 
-        // Add similar calls for other pieces (rooks, knights, bishops, etc.)
-        // self.generate_rook_moves(is_white_turn, &mut legal_boards);
-        // self.generate_knight_moves(is_white_turn, &mut legal_boards);
-        // ...
-
-        // Return the list of legal boards
+        // Remove moves in which the king is in check
+        self.prune_illegal_moves( is_white_turn, &mut legal_boards );
+    
         legal_boards
     }
 
@@ -58,26 +56,15 @@ impl Board {
     // 6. Checkmate is when king is under check and tehre are no legal moves (win/lose)
     // 7. Stalemate is when there are no legal moves, bu tthe king is not in check (draw)
 
-    fn generate_pawn_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
-        // Placeholder: implement logic to generate pawn moves based on color
-        // Example of how you'd modify the state and push it into legal_boards
-
-        // 1. Single step forward if unobstructing
-        // 2. Double step forward if first move and un-obstructing
-        // 3. Left single diagonal capture, if opponent piece
-        // 4. Right single diagonal capture if opponent piece
-        // 5. Promote to Queen if on last file
-        // 6. Promote to Rook if on last file
-        // 7. Promote to Knight if on last file
-        // 8. Promote to Bishop if on last file
-        // 9. En-passant if conditions are right
-    }
-
-    fn generate_rook_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+    fn prune_illegal_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
         // 1. Every Straight Up until EOB ( End of board ) or capture or obstruction
         // 2. Every Straight Down until EOB ( End of board ) or capture or obstruction
         // 3. Every Straight Right until EOB ( End of board ) or capture or obstruction
         // 4. Every Straight Left until EOB ( End of board ) or capture or obstruction
+    }
+
+    fn generate_rook_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+        // Remove moves in which the king is in check
     }
 
     fn generate_knight_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
@@ -91,12 +78,6 @@ impl Board {
         // 4. Every NW ( North-West ) diagonal until EOB or Capture or obstruction
     }
 
-    fn generate_king_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
-        // 1. All 8 squares around the king except EOB or obstruction including capture
-        //  Castling to the King-side
-        //  Castling to the Queen-side
-    }
-
     fn generate_queen_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
         // 1. Every Straight Up until EOB ( End of board ) or capture or obstruction
         // 2. Every Straight Down until EOB ( End of board ) or capture or obstruction
@@ -106,6 +87,27 @@ impl Board {
         // 6. Every SE ( South-East ) diagonal until EOB or Capture or obstruction
         // 7. Every SW ( Sount-West ) diagonal until EOB or Capture or obstruction
         // 8. Every NW ( North-West ) diagonal until EOB or Capture or obstruction
+    }
+
+    fn generate_king_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+        // 1. All 8 squares around the king except EOB or obstruction including capture
+        //  Castling to the King-side
+        //  Castling to the Queen-side
+    }
+
+    fn generate_pawn_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+        // Placeholder: implement logic to generate pawn moves based on color
+        // Example of how you'd modify the state and push it into legal_boards
+
+        // 1. Single step forward if unobstructing
+        // 2. Double step forward if first move and un-obstructing
+        // 3. Left single diagonal capture, if opponent piece
+        // 4. Right single diagonal capture if opponent piece
+        // 5. Promote to Queen if on last file
+        // 6. Promote to Rook if on last file
+        // 7. Promote to Knight if on last file
+        // 8. Promote to Bishop if on last file
+        // 9. En-passant if conditions are right
     }
 
     pub fn save_board(&self, file_name: &str) {
