@@ -42,16 +42,66 @@ impl Board {
         legal_boards
     }
 
+    // Some Global Rules to take care of:
+    // 
+    // 1. A legal move should be discarded, if after making the move current king is under check!!
+    // 2. Castling can be done only in the following cases
+    //      a. King and the corresponding rook shouldn't have moved
+    //      b. The king should not be in check
+    //      c. The squares the king moves through during castling should not be in check
+    //      d. There should be no pieces between the king and the corresponding rook
+    // 3. En-Passant can only be done, `ONLY IMMIDEATELY` after the opponent moves double step pawn
+
     fn generate_pawn_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
         // Placeholder: implement logic to generate pawn moves based on color
         // Example of how you'd modify the state and push it into legal_boards
+
+        // 1. Single step forward if unobstructing
+        // 2. Double step forward if first move and un-obstructing
+        // 3. Left diagonal capture, if opponent piece
+        // 4. Right diagonal capture if opponent piece
+        // 5. Promote to Queen on last file
+        // 6. Promote to Rook on last file
+        // 7. Promote to Knight on last file
+        // 8. Promote to Bishop on last file
+        // 9. Promote to Bishop on last file
+        // 10. En-passant if conditions are right
     }
 
-    // Additional helper methods for generating moves for other pieces (rooks, knights, bishops, etc.)
-    // fn generate_rook_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) { ... }
-    // fn generate_knight_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) { ... }
-    // fn generate_bishop_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) { ... }
-    // fn generate_castling_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) { ... }
+    fn generate_rook_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+        // 1. Every Straight Up until EOB ( End of board ) or capture
+        // 2. Every Straight Down until EOB ( End of board ) or capture
+        // 3. Every Straight Right until EOB ( End of board ) or capture
+        // 4. Every Straight Left until EOB ( End of board ) or capture
+    }
+
+    fn generate_knight_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+        // 1. All 8 L shape moves around it ( Unless EOB ) including capture
+    }
+
+    fn generate_bishop_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+        // 1. Every NE ( North-East ) diagonal until EOB or Capture
+        // 2. Every SE ( South-East ) diagonal until EOB or Capture
+        // 3. Every SW ( Sount-West ) diagonal until EOB or Capture
+        // 4. Every NW ( North-West ) diagonal until EOB or Capture
+    }
+
+    fn generate_king_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+        // 1. All 8 squares around the king except EOB
+        //  Castling to the King-side
+        //  Castling to the Queen-side
+    }
+
+    fn generate_queen_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+        // 1. Every Straight Up until EOB ( End of board ) or capture
+        // 2. Every Straight Down until EOB ( End of board ) or capture
+        // 3. Every Straight Right until EOB ( End of board ) or capture
+        // 4. Every Straight Left until EOB ( End of board ) or capture
+        // 5. Every NE ( North-East ) diagonal until EOB or Capture
+        // 6. Every SE ( South-East ) diagonal until EOB or Capture
+        // 7. Every SW ( Sount-West ) diagonal until EOB or Capture
+        // 8. Every NW ( North-West ) diagonal until EOB or Capture
+    }
 
     pub fn save_board(&self, file_name: &str) {
         // Serialize the Board struct into JSON format
