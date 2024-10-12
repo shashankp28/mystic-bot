@@ -17,7 +17,7 @@ pub struct Board {
 
     // Flattended Matrix representation of 8x8 Chess Board, with `a1` at the Top-Left
     // Bit is 1 if the corresponding piece is at corresponding index else 0
-    // The white and black parts of the boards are concatenated in 64+64 = 128 bits
+    // The black and white parts of the boards are concatenated in 64+64 = 128 bits
     // The MSB part corresponds to black and LSB part corresponds to white
     // The below representation based on
     // Video: https://www.youtube.com/watch?v=w4FFX_otR-4&pp=ygUSbWFraW5nIGEgY2hlc3MgYm90
@@ -25,14 +25,13 @@ pub struct Board {
     pub knights: u128,
     pub bishops: u128,
     pub queens: u128,
-    pub king: u128,
+    pub kings: u128,
     pub pawns: u128,
 
-    // ( 8 bits for each black pawn, ||ly 8 bits for each white pawn that moved double step )
-    pub en_passant: u16,
-
-    // ( X, X, BlackKingMoved, BlackQueenRookMoved, BlackKingRookMoved, ||ly 3 for White )
-    pub castling_rights: u8,
+    // 1 bit, whether the board has an en-passant
+    // It is not possible for a board to have multiple en-passants at the same time!
+    // ( X, X, X, en_passant, Black o-o, Black o-o-o, White o-o, White o-o-o )
+    pub metadata: u8,
 }
 ```
 
