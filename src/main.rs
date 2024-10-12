@@ -15,14 +15,13 @@ pub struct Board {
     pub knights: u128,
     pub bishops: u128,
     pub queens: u128,
-    pub king: u128,
+    pub kings: u128,
     pub pawns: u128,
 
-    // ( 8 bits for each black pawn, ||ly 8 bits for each white pawn that moved double step )
-    pub en_passant: u16,
-
-    // ( X, X, BlackKingMoved, BlackQueenRookMoved, BlackKingRookMoved, ||ly 3 for White )
-    pub castling_rights: u8,
+    // 1 bit, whether the board has an en-passant
+    // It is not possible for a board to have multiple en-passants at the same time!
+    // ( X, X, X, en_passant, Black o-o, Black o-o-o, White o-o, White o-o-o )
+    pub metadata: u8,
 }
 
 impl Board {
@@ -130,11 +129,10 @@ fn main() {
         rooks: 2388925415139424862208,
         knights: 1222240910071333650432,
         bishops: 666676860038909263872,
-        queens: 148150413341979836416,
-        king: 296300826683959672832,
+        queens: 296300826683959672832,
+        kings: 148150413341979836416,
         pawns: 1204203524907878590709760,
-        en_passant: 0,
-        castling_rights: 63
+        metadata: 15
     };
 
     // Save the board to a file named "board.json"
