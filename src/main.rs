@@ -64,49 +64,48 @@ impl Board {
 
         // 1. Single step forward if unobstructing
         // 2. Double step forward if first move and un-obstructing
-        // 3. Left diagonal capture, if opponent piece
-        // 4. Right diagonal capture if opponent piece
+        // 3. Left single diagonal capture, if opponent piece
+        // 4. Right single diagonal capture if opponent piece
         // 5. Promote to Queen if on last file
         // 6. Promote to Rook if on last file
         // 7. Promote to Knight if on last file
         // 8. Promote to Bishop if on last file
-        // 9. Promote to Bishop if on last file
-        // 10. En-passant if conditions are right
+        // 9. En-passant if conditions are right
     }
 
     fn generate_rook_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
-        // 1. Every Straight Up until EOB ( End of board ) or capture
-        // 2. Every Straight Down until EOB ( End of board ) or capture
-        // 3. Every Straight Right until EOB ( End of board ) or capture
-        // 4. Every Straight Left until EOB ( End of board ) or capture
+        // 1. Every Straight Up until EOB ( End of board ) or capture or obstruction
+        // 2. Every Straight Down until EOB ( End of board ) or capture or obstruction
+        // 3. Every Straight Right until EOB ( End of board ) or capture or obstruction
+        // 4. Every Straight Left until EOB ( End of board ) or capture or obstruction
     }
 
     fn generate_knight_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
-        // 1. All 8 L shape moves around it ( Unless EOB ) including capture
+        // 1. All 8 L shape moves around it ( Unless EOB or obstruction ) including capture
     }
 
     fn generate_bishop_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
-        // 1. Every NE ( North-East ) diagonal until EOB or Capture
-        // 2. Every SE ( South-East ) diagonal until EOB or Capture
-        // 3. Every SW ( Sount-West ) diagonal until EOB or Capture
-        // 4. Every NW ( North-West ) diagonal until EOB or Capture
+        // 1. Every NE ( North-East ) diagonal until EOB or Capture or obstruction
+        // 2. Every SE ( South-East ) diagonal until EOB or Capture or obstruction
+        // 3. Every SW ( Sount-West ) diagonal until EOB or Capture or obstruction
+        // 4. Every NW ( North-West ) diagonal until EOB or Capture or obstruction
     }
 
     fn generate_king_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
-        // 1. All 8 squares around the king except EOB
+        // 1. All 8 squares around the king except EOB or obstruction including capture
         //  Castling to the King-side
         //  Castling to the Queen-side
     }
 
     fn generate_queen_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
-        // 1. Every Straight Up until EOB ( End of board ) or capture
-        // 2. Every Straight Down until EOB ( End of board ) or capture
-        // 3. Every Straight Right until EOB ( End of board ) or capture
-        // 4. Every Straight Left until EOB ( End of board ) or capture
-        // 5. Every NE ( North-East ) diagonal until EOB or Capture
-        // 6. Every SE ( South-East ) diagonal until EOB or Capture
-        // 7. Every SW ( Sount-West ) diagonal until EOB or Capture
-        // 8. Every NW ( North-West ) diagonal until EOB or Capture
+        // 1. Every Straight Up until EOB ( End of board ) or capture or obstruction
+        // 2. Every Straight Down until EOB ( End of board ) or capture or obstruction
+        // 3. Every Straight Right until EOB ( End of board ) or capture or obstruction
+        // 4. Every Straight Left until EOB ( End of board ) or capture or obstruction
+        // 5. Every NE ( North-East ) diagonal until EOB or Capture or obstruction
+        // 6. Every SE ( South-East ) diagonal until EOB or Capture or obstruction
+        // 7. Every SW ( Sount-West ) diagonal until EOB or Capture or obstruction
+        // 8. Every NW ( North-West ) diagonal until EOB or Capture or obstruction
     }
 
     pub fn save_board(&self, file_name: &str) {
