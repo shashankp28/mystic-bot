@@ -5,18 +5,12 @@ import json
 from default.custom import customBoard
 
 binaryPieceMap = {
-    "white_rooks": "WR",
-    "white_knights": "WN",
-    "white_bishops": "WB",
-    "white_queens": "WQ",
-    "white_king": "WK",
-    "white_pawns": "WP",
-    "black_rooks": "BR",
-    "black_knights": "BN",
-    "black_bishops": "BB",
-    "black_queens": "BQ",
-    "black_king": "BK",
-    "black_pawns": "BP",
+    "rooks": [ "BR", "WR" ],
+    "knights": [ "BN", "WN" ],
+    "bishops": [ "BB", "WB" ],
+    "queens": [ "BQ", "WQ" ],
+    "king": [ "BK", "WK" ],
+    "pawns": [ "BP", "WP" ],
 }
 
 
@@ -28,7 +22,6 @@ class ChessBoard:
         self.enPassant = 0
         self.castlingRights = 63
         if custom:
-            print()
             self.board, self.enPassant, self.castlingRights = customBoard
         elif binaryBoardFile:
             with open(binaryBoardFile, 'r+') as f:
@@ -38,11 +31,12 @@ class ChessBoard:
                 if key not in binaryPieceMap:
                     continue
                 curr_value = data[key]
-                for i in range(8):
-                    for j in range(8):
-                        if curr_value % 2:
-                            board[i][j] = binaryPieceMap[key]
-                        curr_value = curr_value >> 1
+                for isWhite in [ 1, 0 ]:
+                    for i in range(8):
+                        for j in range(8):
+                            if curr_value % 2:
+                                board[7-i][7-j] = binaryPieceMap[key][ isWhite ]
+                            curr_value = curr_value >> 1
             self.board = board
             self.enPassant = data['en_passant']
             self.castlingRights = data['castling_rights']
@@ -61,36 +55,24 @@ class ChessBoard:
 
     def getEmptyBinaryBoard(self):
         return {
-            "white_rooks": 0,
-            "white_knights": 0,
-            "white_bishops": 0,
-            "white_queens": 0,
-            "white_king": 0,
-            "white_pawns": 0,
-            "black_rooks": 0,
-            "black_knights": 0,
-            "black_bishops": 0,
-            "black_queens": 0,
-            "black_king": 0,
-            "black_pawns": 0,
+            "rooks": 0,
+            "knights": 0,
+            "bishops": 0,
+            "queens": 0,
+            "king": 0,
+            "pawns": 0,
             "en_passant": 0,
             "castling_rights": 0
         }
 
     def getDefaultBinaryBoard(self):
         return {
-            "white_rooks": 129,
-            "white_knights": 66,
-            "white_bishops": 36,
-            "white_queens": 16,
-            "white_king": 8,
-            "white_pawns": 65280,
-            "black_rooks": 9295429630892703744,
-            "black_knights": 4755801206503243776,
-            "black_bishops": 2594073385365405696,
-            "black_queens": 1152921504606846976,
-            "black_king": 576460752303423488,
-            "black_pawns": 71776119061217280,
+            "rooks": 2388925415139424862208,
+            "knights": 1222240910071333650432,
+            "bishops": 666676860038909263872,
+            "queens": 296300826683959672832,
+            "king": 148150413341979836416,
+            "pawns": 1204203524907878590709760,
             "en_passant": 0,
             "castling_rights": 63
         }
@@ -130,12 +112,13 @@ class ChessBoard:
         if not fileName:
             return
         binaryVals = self.getEmptyBinaryBoard()
-        for i in range(8):
-            for j in range(8):
-                index = i*8 + j
-                for key, value in binaryPieceMap.items():
-                    binaryVals[key] = binaryVals[key] | (
-                        value == self.board[i][j]) << index
+        index = 127
+        for isWhite in [ 0, 1 ]:
+            for i in range(8):
+                for j in range(8):
+                    for key, value in binaryPieceMap.items():
+                        binaryVals[key] = binaryVals[key] | ( value[ isWhite ] == self.board[i][j] ) << index
+                    index -= 1
         binaryVals['en_passant'] = self.enPassant
         binaryVals['castling_rights'] = self.castlingRights
         with open(fileName, 'w+') as f:

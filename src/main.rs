@@ -7,21 +7,16 @@ pub struct Board {
 
     // Flattended Matrix representation of 8x8 Chess Board, with `a1` at the Top-Left
     // Bit is 1 if the corresponding piece is at corresponding index else 0
+    // The white and black parts of the boards are concatenated in 64+64 = 128 bits
+    // The MSB part corresponds to black and LSB part corresponds to white
     // The below representation based on
     // Video: https://www.youtube.com/watch?v=w4FFX_otR-4&pp=ygUSbWFraW5nIGEgY2hlc3MgYm90
-    pub white_rooks: u64,
-    pub white_knights: u64,
-    pub white_bishops: u64,
-    pub white_queens: u64,
-    pub white_king: u64,
-    pub white_pawns: u64,
-
-    pub black_rooks: u64,
-    pub black_knights: u64,
-    pub black_bishops: u64,
-    pub black_queens: u64,
-    pub black_king: u64,
-    pub black_pawns: u64,
+    pub rooks: u128,
+    pub knights: u128,
+    pub bishops: u128,
+    pub queens: u128,
+    pub king: u128,
+    pub pawns: u128,
 
     // ( 8 bits for each black pawn, ||ly 8 bits for each white pawn that moved double step )
     pub en_passant: u16,
@@ -132,18 +127,12 @@ impl Board {
 
 fn main() {
     let board = Board {
-        white_rooks: 129,
-        white_knights: 66,
-        white_bishops: 36,
-        white_queens: 16,
-        white_king: 8,
-        white_pawns: 65280,
-        black_rooks: 9295429630892703744,
-        black_knights: 4755801206503243776,
-        black_bishops: 2594073385365405696,
-        black_queens: 1152921504606846976,
-        black_king: 576460752303423488,
-        black_pawns: 71776119061217280,
+        rooks: 2388925415139424862208,
+        knights: 1222240910071333650432,
+        bishops: 666676860038909263872,
+        queens: 148150413341979836416,
+        king: 296300826683959672832,
+        pawns: 1204203524907878590709760,
         en_passant: 0,
         castling_rights: 63
     };
