@@ -127,23 +127,23 @@ impl Board {
 
 fn main() {
     let board = Board {
-        white_rooks: 0,
-        white_knights: 0,
-        white_bishops: 0,
-        white_queens: 0,
-        white_king: 0,
-        white_pawns: 0,
-        black_rooks: 0,
-        black_knights: 0,
-        black_bishops: 0,
-        black_queens: 0,
-        black_king: 0,
-        black_pawns: 0,
+        white_rooks: 129,
+        white_knights: 66,
+        white_bishops: 36,
+        white_queens: 16,
+        white_king: 8,
+        white_pawns: 65280,
+        black_rooks: 9295429630892703744,
+        black_knights: 4755801206503243776,
+        black_bishops: 2594073385365405696,
+        black_queens: 1152921504606846976,
+        black_king: 576460752303423488,
+        black_pawns: 71776119061217280,
         en_passant: 0,
-        castling_rights: 0,
+        castling_rights: 63
     };
 
     // Save the board to a file named "board.json"
-    board.save_board("board.json");
+    board.save_board("gen/rust_board.json");
     println!("Hello, world!");
 }
