@@ -26,19 +26,19 @@ pub struct Board {
 }
 
 impl Board {
-    pub fn get_legal_moves(&self, is_white_turn: bool) -> Vec<Board> {
+    pub fn get_legal_moves(&self) -> Vec<Board> {
         let mut legal_boards = Vec::new();
 
         // Generate all possible legal moves
-        self.generate_rook_moves(is_white_turn, &mut legal_boards);
-        self.generate_knight_moves(is_white_turn, &mut legal_boards);
-        self.generate_bishop_moves(is_white_turn, &mut legal_boards);
-        self.generate_queen_moves(is_white_turn, &mut legal_boards);
-        self.generate_king_moves(is_white_turn, &mut legal_boards);
-        self.generate_pawn_moves(is_white_turn, &mut legal_boards);
+        self.generate_rook_moves(&mut legal_boards);
+        self.generate_knight_moves(&mut legal_boards);
+        self.generate_bishop_moves(&mut legal_boards);
+        self.generate_queen_moves(&mut legal_boards);
+        self.generate_king_moves(&mut legal_boards);
+        self.generate_pawn_moves(&mut legal_boards);
 
         // Remove moves in which the king is in check
-        self.prune_illegal_moves(is_white_turn, &mut legal_boards);
+        self.prune_illegal_moves(&mut legal_boards);
     
         legal_boards
     }
@@ -57,29 +57,25 @@ impl Board {
     // 6. Checkmate is when king is under check and tehre are no legal moves (win/lose)
     // 7. Stalemate is when there are no legal moves, bu tthe king is not in check (draw)
 
-    fn prune_illegal_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
-        // Remove moves in which the king is in check
-    }
-
-    fn generate_rook_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+    fn generate_rook_moves(&self, legal_boards: &mut Vec<Board>) {
         // 1. Every Straight Up until EOB ( End of board ) or capture or obstruction
         // 2. Every Straight Down until EOB ( End of board ) or capture or obstruction
         // 3. Every Straight Right until EOB ( End of board ) or capture or obstruction
         // 4. Every Straight Left until EOB ( End of board ) or capture or obstruction
     }
 
-    fn generate_knight_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+    fn generate_knight_moves(&self, legal_boards: &mut Vec<Board>) {
         // 1. All 8 L shape moves around it ( Unless EOB or obstruction ) including capture
     }
 
-    fn generate_bishop_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+    fn generate_bishop_moves(&self, legal_boards: &mut Vec<Board>) {
         // 1. Every NE ( North-East ) diagonal until EOB or Capture or obstruction
         // 2. Every SE ( South-East ) diagonal until EOB or Capture or obstruction
         // 3. Every SW ( Sount-West ) diagonal until EOB or Capture or obstruction
         // 4. Every NW ( North-West ) diagonal until EOB or Capture or obstruction
     }
 
-    fn generate_queen_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+    fn generate_queen_moves(&self, legal_boards: &mut Vec<Board>) {
         // 1. Every Straight Up until EOB ( End of board ) or capture or obstruction
         // 2. Every Straight Down until EOB ( End of board ) or capture or obstruction
         // 3. Every Straight Right until EOB ( End of board ) or capture or obstruction
@@ -90,13 +86,13 @@ impl Board {
         // 8. Every NW ( North-West ) diagonal until EOB or Capture or obstruction
     }
 
-    fn generate_king_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+    fn generate_king_moves(&self, legal_boards: &mut Vec<Board>) {
         // 1. All 8 squares around the king except EOB or obstruction including capture
         //  Castling to the King-side
         //  Castling to the Queen-side
     }
 
-    fn generate_pawn_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+    fn generate_pawn_moves(&self, legal_boards: &mut Vec<Board>) {
         // Placeholder: implement logic to generate pawn moves based on color
         // Example of how you'd modify the state and push it into legal_boards
 
@@ -109,6 +105,10 @@ impl Board {
         // 7. Promote to Knight if on last file
         // 8. Promote to Bishop if on last file
         // 9. En-passant if conditions are right
+    }
+
+    fn prune_illegal_moves(&self, legal_boards: &mut Vec<Board>) {
+        // Remove moves in which the king is in check
     }
 
     pub fn save_board(&self, file_name: &str) {
