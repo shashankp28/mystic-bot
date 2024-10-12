@@ -59,6 +59,10 @@ impl Board {
     //      c. The squares the king moves through during castling should not be in check
     //      d. There should be no pieces between the king and the corresponding rook
     // 3. En-Passant can only be done, `ONLY IMMIDEATELY` after the opponent moves double step pawn
+    // 4. Check is when the king is directly under threat
+    // 5. Repeating a sequence of moves 3 times draws
+    // 6. Checkmate is when king is under check and tehre are no legal moves (win/lose)
+    // 7. Stalemate is when there are no legal moves, bu tthe king is not in check (draw)
 
     fn generate_pawn_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
         // Placeholder: implement logic to generate pawn moves based on color
