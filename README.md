@@ -55,21 +55,4 @@ pip install -r requirements.txt
 
 ### Usage
 
-Currently the `default.py` file can be used for analysis:
-
-```bash
-usage: display.py [-h] [-bi BINARYIN] [-ci CUSTOMIN] [-bo BINARYOUT] [-io IMAGEOUT]
-
-Save the chessboard image to a file
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -bi BINARYIN, --binaryIn BINARYIN
-                        The binary json file to be used to generate the board (eg. default/board.json)
-  -ci CUSTOMIN, --customIn CUSTOMIN
-                        The custom board to be used as input ( edit. default/custom.py )
-  -bo BINARYOUT, --binaryOut BINARYOUT
-                        The binary json file to dump the board (eg. gen/board.json)
-  -io IMAGEOUT, --imageOut IMAGEOUT
-                        The png filename to save the chessboard image (e.g., gen/output.png)
-```
+Using the `analysis.ipynb` is straight-forward
