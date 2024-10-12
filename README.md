@@ -9,7 +9,38 @@ git clone https://github.com/shashankp28/mystic-bot.git
 
 ## Bot Algorithm
 
-TODO
+### Bit-Board Representation
+
+```rust
+#[derive(Serialize)]
+pub struct Board {
+
+    // Flattended Matrix representation of 8x8 Chess Board, with `a1` at the Top-Left
+    // Bit is 1 if the corresponding piece is at corresponding index else 0
+    // The below representation based on
+    // Video: https://www.youtube.com/watch?v=w4FFX_otR-4&pp=ygUSbWFraW5nIGEgY2hlc3MgYm90
+    pub white_rooks: u64,
+    pub white_knights: u64,
+    pub white_bishops: u64,
+    pub white_queens: u64,
+    pub white_king: u64,
+    pub white_pawns: u64,
+
+    pub black_rooks: u64,
+    pub black_knights: u64,
+    pub black_bishops: u64,
+    pub black_queens: u64,
+    pub black_king: u64,
+    pub black_pawns: u64,
+
+    // ( 8 bits for each black pawn, ||ly 8 bits for each white pawn that moved double step )
+    pub en_passant: u16,
+
+    // ( X, X, BlackKingMoved, BlackQueenRookMoved, BlackKingRookMoved, ||ly 3 for White )
+    pub castling_rights: u8,
+}
+
+```
 
 ## Display Chess Board
 
@@ -31,44 +62,21 @@ pip install -r requirements.txt
 
 ### Usage
 
-1. Place your piece images and the chessboard background image in the `img` directory
+Currently the `default.py` file can be used for analysis:
 
-2. Modify the `customBoard` variable in `display.py` to customize the arrangement of pieces on the chessboard. Default board configuration is as follows:
+```bash
+usage: display.py [-h] [-bi BINARYIN] [-ci CUSTOMIN] [-bo BINARYOUT] [-io IMAGEOUT]
 
-```python
-customBoard = [
-    ['BR', 'BN', 'BB', 'BQ', 'BK', 'BB', 'BN', 'BR'],
-    ['BP', 'BP', 'BP', 'BP', 'BP', 'BP', 'BP', 'BP'],
-    [None, None, None, None, None, None, None, None],
-    [None, None, None, None, None, None, None, None],
-    [None, None, None, None, None, None, None, None],
-    [None, None, None, None, None, None, None, None],
-    ['WP', 'WP', 'WP', 'WP', 'WP', 'WP', 'WP', 'WP'],
-    ['WR', 'WN', 'WB', 'WQ', 'WK', 'WB', 'WN', 'WR'],
-]
+Save the chessboard image to a file
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -bi BINARYIN, --binaryIn BINARYIN
+                        The binary json file to be used to generate the board (eg. default/board.json)
+  -ci CUSTOMIN, --customIn CUSTOMIN
+                        The custom board to be used as input ( edit. default/custom.py )
+  -bo BINARYOUT, --binaryOut BINARYOUT
+                        The binary json file to dump the board (eg. gen/board.json)
+  -io IMAGEOUT, --imageOut IMAGEOUT
+                        The png filename to save the chessboard image (e.g., gen/output.png)
 ```
-
-3. Run the script from the command line with the output filename as an argument:
-
-```
-python display.py -o output.png
-```
-
-4. Replace `output.png` with your desired output filename
-
-## Piece Abbreviations
-
-| Abbreviation | Piece        |
-| ------------ | ------------ |
-| BR           | Black Rook   |
-| BN           | Black Knight |
-| BB           | Black Bishop |
-| BQ           | Black Queen  |
-| BK           | Black King   |
-| BP           | Black Pawn   |
-| WR           | White Rook   |
-| WN           | White Knight |
-| WB           | White Bishop |
-| WQ           | White Queen  |
-| WK           | White King   |
-| WP           | White Pawn   |

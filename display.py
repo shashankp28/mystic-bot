@@ -2,6 +2,7 @@ import os
 import argparse
 from PIL import Image
 import json
+from default.custom import customBoard
 
 binaryPieceMap = {
     "white_rooks": "WR",
@@ -21,13 +22,15 @@ binaryPieceMap = {
 
 class ChessBoard:
 
-    def __init__(self, binaryBoardFile=None):
+    def __init__(self, binaryBoardFile=None, custom=False):
 
         self.board = self.getDefaultBoard()
         self.enPassant = 0
         self.castlingRights = 63
-
-        if binaryBoardFile:
+        if custom:
+            print()
+            self.board, self.enPassant, self.castlingRights = customBoard
+        elif binaryBoardFile:
             with open(binaryBoardFile, 'r+') as f:
                 data = json.load(f)
             board = [[None]*8 for _ in range(8)]
@@ -76,18 +79,18 @@ class ChessBoard:
 
     def getDefaultBinaryBoard(self):
         return {
-            "white_rooks": 0,
-            "white_knights": 0,
-            "white_bishops": 0,
-            "white_queens": 0,
-            "white_king": 0,
-            "white_pawns": 0,
-            "black_rooks": 0,
-            "black_knights": 0,
-            "black_bishops": 0,
-            "black_queens": 0,
-            "black_king": 0,
-            "black_pawns": 0,
+            "white_rooks": 129,
+            "white_knights": 66,
+            "white_bishops": 36,
+            "white_queens": 16,
+            "white_king": 8,
+            "white_pawns": 65280,
+            "black_rooks": 9295429630892703744,
+            "black_knights": 4755801206503243776,
+            "black_bishops": 2594073385365405696,
+            "black_queens": 1152921504606846976,
+            "black_king": 576460752303423488,
+            "black_pawns": 71776119061217280,
             "en_passant": 0,
             "castling_rights": 63
         }
@@ -143,28 +146,34 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="Save the chessboard image to a file")
     parser.add_argument(
-        '-bi', '--input',
+        '-bi', '--binaryIn',
         type=str,
         required=False,
-        help='The binary json file to be used to generate the board (eg. board.json)'
+        help='The binary json file to be used to generate the board (eg. default/board.json)'
     )
     parser.add_argument(
-        '-bo', '--output',
-        type=str,
+        '-ci', '--customIn',
+        type=bool,
         required=False,
-        help='The binary json file to dump the board (eg. board.json)'
+        help='The custom board to be used as input ( edit. default/custom.py )'
     )
     parser.add_argument(
-        '-io', '--image',
+        '-bo', '--binaryOut',
         type=str,
         required=False,
-        help='The png filename to save the chessboard image (e.g., output.png)'
+        help='The binary json file to dump the board (eg. gen/board.json)'
+    )
+    parser.add_argument(
+        '-io', '--imageOut',
+        type=str,
+        required=False,
+        help='The png filename to save the chessboard image (e.g., gen/output.png)'
     )
 
     args = parser.parse_args()
     print(args)
-    board = ChessBoard(args.input)
-    board.boardToBinary(args.output)
-    board.display(args.image)
+    board = ChessBoard(args.binaryIn, args.customIn)
+    board.boardToBinary(args.binaryOut)
+    board.display(args.imageOut)
 
 #####################################################################

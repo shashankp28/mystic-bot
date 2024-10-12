@@ -5,6 +5,8 @@ use std::io::Write;
 #[derive(Serialize)]
 pub struct Board {
 
+    // Flattended Matrix representation of 8x8 Chess Board, with `a1` at the Top-Left
+    // Bit is 1 if the corresponding piece is at corresponding index else 0
     // The below representation based on
     // Video: https://www.youtube.com/watch?v=w4FFX_otR-4&pp=ygUSbWFraW5nIGEgY2hlc3MgYm90
     pub white_rooks: u64,
