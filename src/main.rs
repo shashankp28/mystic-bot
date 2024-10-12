@@ -20,7 +20,7 @@ pub struct Board {
 
     // 1 bit, whether the board has an en-passant
     // It is not possible for a board to have multiple en-passants at the same time!
-    // ( is_white_move, is_en_pasaant, [ 3 bits en_passant_column  ],
+    // ( is_white_move, en_passant_warn, [ 3 bits en_passant_column  ],
     //   Black o-o, Black o-o-o, White o-o, White o-o-o )  --> 9 / 16 bits used
     pub metadata: u16,
 }
