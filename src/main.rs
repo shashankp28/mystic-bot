@@ -4,6 +4,9 @@ use std::io::Write;
 
 #[derive(Serialize)]
 pub struct Board {
+
+    // The below representation based on
+    // Video: https://www.youtube.com/watch?v=w4FFX_otR-4&pp=ygUSbWFraW5nIGEgY2hlc3MgYm90
     pub white_rooks: u64,
     pub white_knights: u64,
     pub white_bishops: u64,
@@ -18,7 +21,10 @@ pub struct Board {
     pub black_king: u64,
     pub black_pawns: u64,
 
+    // ( 8 bits for each black pawn, ||ly 8 bits for each white pawn that moved double step )
     pub en_passant: u16,
+
+    // ( X, X, BlackKingMoved, BlackQueenRookMoved, BlackKingRookMoved, ||ly 3 for White )
     pub castling_rights: u8,
 }
 
@@ -60,11 +66,11 @@ impl Board {
         // 2. Double step forward if first move and un-obstructing
         // 3. Left diagonal capture, if opponent piece
         // 4. Right diagonal capture if opponent piece
-        // 5. Promote to Queen on last file
-        // 6. Promote to Rook on last file
-        // 7. Promote to Knight on last file
-        // 8. Promote to Bishop on last file
-        // 9. Promote to Bishop on last file
+        // 5. Promote to Queen if on last file
+        // 6. Promote to Rook if on last file
+        // 7. Promote to Knight if on last file
+        // 8. Promote to Bishop if on last file
+        // 9. Promote to Bishop if on last file
         // 10. En-passant if conditions are right
     }
 
