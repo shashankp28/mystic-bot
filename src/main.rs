@@ -57,14 +57,14 @@ impl Board {
     // 7. Stalemate is when there are no legal moves, bu tthe king is not in check (draw)
 
     fn prune_illegal_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
+        // Remove moves in which the king is in check
+    }
+
+    fn generate_rook_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
         // 1. Every Straight Up until EOB ( End of board ) or capture or obstruction
         // 2. Every Straight Down until EOB ( End of board ) or capture or obstruction
         // 3. Every Straight Right until EOB ( End of board ) or capture or obstruction
         // 4. Every Straight Left until EOB ( End of board ) or capture or obstruction
-    }
-
-    fn generate_rook_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
-        // Remove moves in which the king is in check
     }
 
     fn generate_knight_moves(&self, is_white: bool, legal_boards: &mut Vec<Board>) {
