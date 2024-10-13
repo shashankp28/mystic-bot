@@ -120,12 +120,13 @@ impl Board {
         // 2. [ ] Every Straight Down until EOB ( End of board ) or capture or obstruction
         // 3. [ ] Every Straight Right until EOB ( End of board ) or capture or obstruction
         // 4. [ ] Every Straight Left until EOB ( End of board ) or capture or obstruction
+        // 5. [ ] Take care to update the castling bits ( King or Queenside ) on first rook move
         println!( "Number of Legal Moves after Rook: {}", legal_boards.len() );
     }
 
     fn generate_knight_moves( &mut self, legal_boards: &mut Vec<Board> ) {
         // TODO: Knight Moves
-        // 1. [ ] All 8 L shape moves around it ( Unless EOB or obstruction ) including capture
+        // 1. [ X ] All 8 L shape moves around it ( Unless EOB or obstruction ) including capture
         println!( "Generating Knight Moves..." );
         let basic_knight_map: u64 = 21617444997;  // Through Experimentation
         let left_half_board_map: u64 = 17361641481138401520;  // Through Experimentation
@@ -207,6 +208,7 @@ impl Board {
         // 1. [ ] All 8 squares around the king except EOB or obstruction including capture
         // 2. [ ] Castling to the King-side
         // 3. [ ] Castling to the Queen-side
+        // 4. [ ] Take care to update the castling bits ( King and Queenside ) on first king move
         println!( "Number of Legal Moves after King: {}", legal_boards.len() );
     }
 
