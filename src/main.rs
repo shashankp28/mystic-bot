@@ -9,7 +9,7 @@ pub struct Board {
 
     // Flattended Matrix representation of 8x8 Chess Board, with `a1` at the Top-Left
     // Bit is 1 if the corresponding piece is at corresponding index else 0
-    // The white and black parts of the boards are concatenated in 64+64 = 128 bits
+    // The black and white parts of the boards are concatenated in 64+64 = 128 bits
     // The MSB part corresponds to black and LSB part corresponds to white
     // The below representation based on
     // Video: https://www.youtube.com/watch?v=w4FFX_otR-4&pp=ygUSbWFraW5nIGEgY2hlc3MgYm90
