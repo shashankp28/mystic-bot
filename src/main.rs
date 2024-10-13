@@ -61,7 +61,7 @@ impl Board {
     // 6. [ ] Checkmate is when king is under check and there are no legal moves (win/lose)
     // 7. [ ] Stalemate is when there are no legal moves, but the king is not in check (draw)
     // 8. [ ] Keep track and update the Half Move Clock
-    // 9. [ ] Keep track and update the Full Move Clock
+    // 9. [ ] Keep track and update the Full Move Number
 
     fn generate_rook_moves( &self, legal_boards: &mut Vec<Board> ) {
         // TODO: Rook Moves
