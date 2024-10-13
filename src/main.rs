@@ -75,7 +75,9 @@ impl Board {
     fn generate_knight_moves( &self, legal_boards: &mut Vec<Board> ) {
         // TODO: Knight Moves
         // 1. [ ] All 8 L shape moves around it ( Unless EOB or obstruction ) including capture
-        
+        let basicKnightMap = 21617444997 as u64;
+        let leftHalfBoardMap = 17361641481138401520 as u64;
+
     }
 
     fn generate_bishop_moves( &self, legal_boards: &mut Vec<Board> ) {
