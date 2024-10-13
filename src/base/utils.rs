@@ -4,8 +4,20 @@ use std::path::Path;
 use serde_json::to_writer_pretty;
 use crate::base::defs::Board;
 use crate::base::defs::PieceColour;
+use std::hash::{Hash, Hasher};
+use std::hash::DefaultHasher;
 
 impl Board {
+
+    pub fn get_number_pieces(&self) -> u32 {
+        let rooks_count = self.rooks.count_ones();
+        let knights_count = self.knights.count_ones();
+        let bishops_count = self.bishops.count_ones();
+        let queens_count = self.queens.count_ones();
+        let kings_count = self.kings.count_ones();
+        let pawns_count = self.pawns.count_ones();
+        rooks_count + knights_count + bishops_count + queens_count + kings_count + pawns_count
+    }
 
     pub fn consolidated_piece_map( &self, colour: PieceColour ) -> u64 {
         let all_piece_map: u128 = self.rooks | self.knights | self.bishops | self.queens | self.kings | self.pawns;
@@ -18,12 +30,13 @@ impl Board {
         }
     }
 
-    pub fn remove_piece( &mut self, index: u8 ) {
+    pub fn remove_piece( &mut self, index: u8 ) -> bool {
         // Remove piece from bitMap if any piece exists at that index,
         // The logic of colour / legality of the move must be taken care
-        // from the caller's side
+        // from the caller's side. Return True if a piece was actually removed
         let mut removal_map: u128 = 0;
         removal_map |= ( 1 << ( 63-index ) ) | ( 1 << ( 127-index ) );
+        let piece_removed: bool = ( self.rooks & removal_map | self.knights & removal_map | self.bishops & removal_map | self.queens & removal_map | self.pawns & removal_map ) != 0;
         removal_map = !removal_map;
         self.rooks &= removal_map;
         self.knights &= removal_map;
@@ -31,6 +44,35 @@ impl Board {
         self.queens &= removal_map;
         // self.kings &= removal_map; IF KING SHOULD BE REMOVED, SOMETHING IS WRONG!!
         self.pawns &= removal_map;
+        piece_removed
+    }
+
+    pub fn update_tickers( &mut self, half_reset: bool, is_black: bool ) {
+        let mut current_half_clock = ( self.metadata >> 9 ) & 127;
+        let mut current_full_number = self.metadata >> 16;
+        current_half_clock = if half_reset { 0 } else { current_half_clock+1 };
+        if is_black {
+            current_full_number += 1;
+        }
+        self.metadata &= !( 127 << 9);
+        self.metadata &= !( 65536 << 16);
+
+        self.metadata |= current_half_clock << 9;
+        self.metadata |= current_full_number << 16;
+
+        self.metadata ^= 1 << 8; // Updating black / white move
+    }
+
+    pub fn hash( &self ) -> u32 {
+        let mut hasher = DefaultHasher::new();
+        self.rooks.hash(&mut hasher);
+        self.knights.hash(&mut hasher);
+        self.bishops.hash(&mut hasher);
+        self.queens.hash(&mut hasher);
+        self.kings.hash(&mut hasher);
+        self.pawns.hash(&mut hasher);
+        self.metadata.hash(&mut hasher);
+        hasher.finish() as u32
     }
 
     // TODO: Some Global Rules to take care of:

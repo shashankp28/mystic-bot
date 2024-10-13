@@ -26,6 +26,6 @@ pub struct Board {
     // It is not possible for a board to have multiple en-passants at the same time!
     // ( [ X bits full move number ], [ 7 bits Half move clock ], is_white_move, en_passant_warn,
     //   [ 3 bits en_passant_column  ], Black o-o, Black o-o-o, White o-o, White o-o-o )
-    //   --> 16 + fullmove_nuber / 32 bits used
+    //   --> 16 + fullmove_number / 32 bits used
     pub metadata: u32,
 }

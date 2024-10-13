@@ -1,7 +1,7 @@
 use mystic_bot::base::defs::Board;
 
 fn main() {
-    let file_path = "sample/start.json";
+    let file_path = "sample/test/knights.json";
     match Board::from_file( file_path ) {
         Ok( mut board ) => {
             println!( "Successfully loaded board: {:?}", board );
