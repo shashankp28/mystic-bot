@@ -6,6 +6,7 @@ impl Board {
         // TODO: Knight Moves
         // 1. [ X ] All 8 L shape moves around it ( Unless EOB or obstruction ) including capture
         // 2. [ X ] Take care to update castling bits if knight captures opp. rook
+        // 3. [ X ] Take care of updating per move tickers like white/block move, half clock, full number
         println!( "Generating Knight Moves..." );
         let basic_knight_map: u64 = 21617444997;  // Through Experimentation
         let left_half_board_map: u64 = 17361641481138401520;  // Through Experimentation

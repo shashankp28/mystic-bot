@@ -14,7 +14,8 @@ impl Board {
         // 7. [ ] Promote to Knight if on last file
         // 8. [ ] Promote to Bishop if on last file
         // 9. [ ] En-passant if conditions are right
-        // 10. [  ] Take care to update castling bits if pawn captures opp. rook
+        // 10. [ ] Take care to update castling bits if pawn captures opp. rook
+        // 11. [ ] Take care of updating per move tickers like white/block move, half clock, full number
         println!( "Number of Legal Moves after Pawn: {}", legal_boards.len() );
     }
 
