@@ -9,6 +9,7 @@ impl Board {
         // 2. [ ] Every SE ( South-East ) diagonal until EOB or Capture or obstruction
         // 3. [ ] Every SW ( South-West ) diagonal until EOB or Capture or obstruction
         // 4. [ ] Every NW ( North-West ) diagonal until EOB or Capture or obstruction
+        // 5. [  ] Take care to update castling bits if bishop captures opp. rook
         println!( "Number of Legal Moves after Bishop: {}", legal_boards.len() );
     }
 

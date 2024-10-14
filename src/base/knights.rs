@@ -1,11 +1,11 @@
-use crate::base::defs::Board;
-use crate::base::defs::PieceColour;
+use crate::base::defs::{Board, PieceColour};
 
 impl Board {
 
     pub fn generate_knight_moves( &mut self, legal_boards: &mut Vec<Board> ) {
         // TODO: Knight Moves
         // 1. [ X ] All 8 L shape moves around it ( Unless EOB or obstruction ) including capture
+        // 2. [  ] Take care to update castling bits if knight captures opp. rook
         println!( "Generating Knight Moves..." );
         let basic_knight_map: u64 = 21617444997;  // Through Experimentation
         let left_half_board_map: u64 = 17361641481138401520;  // Through Experimentation
@@ -46,6 +46,15 @@ impl Board {
 
                 let mut new_board: Board = self.clone(); // Clone the board to modify it
                 new_board.remove_piece( index ); // Remove current knight position
+
+                // If I removed opp. rook, I update their castling bits
+                let opp_colour: PieceColour = match is_black {
+                    1 => PieceColour::White,
+                    0 => PieceColour::Black,
+                    _ => PieceColour::Any,
+                };
+                new_board.remove_rook_capture_castling(opp_colour, new_index as u64);
+
                 let piece_removed = new_board.remove_piece( new_index ); // Remove existing piece ( for capture )
                 new_board.knights |= 1 << 64*is_black+new_pos; // Update new knight position
 
@@ -78,7 +87,7 @@ mod tests {
                 let mut legal_boards: Vec<Board> = Vec::new();
                 board.generate_knight_moves( &mut legal_boards );
                 assert_eq!(legal_boards.len(), 12, "Expected 12 legal moves, but got {}", legal_boards.len());
-                let num_pieces: [ u32; 12 ] = [21, 22, 21, 22, 22, 22, 21, 21, 22, 22, 22, 22];
+                let num_pieces: [ u32; 12 ] = [32, 31, 31, 31, 31, 32, 31, 31, 31, 32, 32, 31];
                 let mut expected_count_map = HashMap::new();
                 for &count in &num_pieces {
                     *expected_count_map.entry(count).or_insert(0) += 1;
@@ -100,18 +109,18 @@ mod tests {
 
                 let mut board_hashes: HashSet<u32> = HashSet::new();
                 let hashes = [
-                    1375663353,
-                    2314646575,
-                    3128550561,
-                    3325961211,
-                    2052908804,
-                    3537535669,
-                    1280573100,
-                    3063960677,
-                    3744544663,
-                    3108334070,
-                    3251968492,
-                    2453248288,
+                    1030348420,
+                    1371719443,
+                    2013380954,
+                    884047246,
+                    107188117,
+                    2672732198,
+                    1084564993,
+                    2685033448,
+                    1285286128,
+                    1185469671,
+                    4272222692,
+                    2539113316,
                 ];
                 for &hash in &hashes {
                     board_hashes.insert(hash);

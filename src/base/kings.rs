@@ -9,6 +9,7 @@ impl Board {
         // 2. [ ] Castling to the King-side
         // 3. [ ] Castling to the Queen-side
         // 4. [ ] Take care to update the castling bits ( King and Queenside ) on first king move
+        // 5. [  ] Take care to update castling bits if king captures opp. rook
         println!( "Number of Legal Moves after King: {}", legal_boards.len() );
     }
 

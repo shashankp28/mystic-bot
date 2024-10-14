@@ -9,6 +9,7 @@ impl Board {
         // 3. [X] Every Straight Right until EOB ( End of board ) or capture or obstruction
         // 4. [X] Every Straight Left until EOB ( End of board ) or capture or obstruction
         // 5. [ ] Take care to update the castling bits ( King or Queenside ) on first rook move
+        // 6. [  ] Take care to update castling bits if rook captures opp. rook
         println!("Generating Rook Moves...");
         let is_black: u8 = if (self.metadata >> 8) & 1 == 1 { 0 } else { 1 };
         let mut rook_positions: u64 = (self.rooks >> 64 * is_black) as u64;

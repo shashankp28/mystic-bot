@@ -6,6 +6,11 @@ pub enum PieceColour {
     Any,
 }
 
+pub enum CastleSide {
+    King,
+    Queen,
+}
+
 #[derive( Copy, Clone, Debug, Serialize, Deserialize )]
 pub struct Board {
 

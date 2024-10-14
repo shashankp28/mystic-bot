@@ -1,5 +1,4 @@
-use crate::base::defs::Board;
-use crate::base::defs::PieceColour;
+use crate::base::defs::{Board, PieceColour, CastleSide};
 use serde_json::to_writer_pretty;
 use std::fs::File;
 use std::hash::DefaultHasher;
@@ -68,6 +67,49 @@ impl Board {
         self.metadata |= current_full_number << 16;
 
         self.metadata ^= 1 << 8; // Updating black / white move
+    }
+
+    pub fn remove_rook_capture_castling( &mut self, colour: PieceColour, index: u64 ) {
+        // Removes Castling bit for a rook if it is being captured
+        match colour {
+            PieceColour::Black => {
+                if self.rooks >> 64 as u64 & 1 << (63 - index) != 0 {
+                    if index == 56 {
+                        self.remove_castling_bits(CastleSide::Queen, colour);
+                    } else if index == 63 {
+                        self.remove_castling_bits(CastleSide::King, colour);
+                    }
+                }
+            }
+            PieceColour::White => {
+                if self.rooks as u64 & 1 << (63 - index) != 0 {
+                    if index == 0 {
+                        self.remove_castling_bits(CastleSide::Queen, colour);
+                    } else if index == 7 {
+                        self.remove_castling_bits(CastleSide::King, colour);
+                    }
+                }
+            }
+            PieceColour::Any => { }
+        }
+    }
+
+    pub fn remove_castling_bits(&mut self, side: CastleSide, colour: PieceColour) {
+        match colour {
+            PieceColour::White => {
+                match side {
+                    CastleSide::Queen => self.metadata &= !(1 << 0),
+                    CastleSide::King => self.metadata &= !(1 << 1),
+                }
+            }
+            PieceColour::Black => {
+                match side {
+                    CastleSide::Queen => self.metadata &= !(1 << 2),
+                    CastleSide::King => self.metadata &= !(1 << 3),
+                }
+            }
+            PieceColour::Any => {}
+        }
     }
 
     pub fn hash(&self) -> u32 {
