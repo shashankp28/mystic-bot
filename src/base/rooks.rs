@@ -9,7 +9,7 @@ impl Board {
         // 3. [X] Every Straight Right until EOB ( End of board ) or capture or obstruction
         // 4. [X] Every Straight Left until EOB ( End of board ) or capture or obstruction
         // 5. [ ] Take care to update the castling bits ( King or Queenside ) on first rook move
-        // 6. [  ] Take care to update castling bits if rook captures opp. rook
+        // 6. [ ] Take care to update castling bits if rook captures opp. rook
         println!("Generating Rook Moves...");
         let is_black: u8 = if (self.metadata >> 8) & 1 == 1 { 0 } else { 1 };
         let mut rook_positions: u64 = (self.rooks >> 64 * is_black) as u64;
@@ -33,7 +33,7 @@ impl Board {
                 let mut new_board = self.clone(); // Clone the board to modify it
                 new_board.remove_piece(index); // Remove current rook position
                 new_board.remove_piece(new_index); // Remove existing piece ( for capture )
-                new_board.rooks |= 1 << 64 * is_black + (63 - new_index); // Update new knight position
+                new_board.rooks |= 1 << 64 * is_black + (63 - new_index); // Update new rook position
                 legal_boards.push(new_board);
 
                 if self.is_different_color_piece_present(new_index, is_black) {
@@ -55,7 +55,7 @@ impl Board {
                 let mut new_board = self.clone(); // Clone the board to modify it
                 new_board.remove_piece(index); // Remove current rook position
                 new_board.remove_piece(new_index); // Remove existing piece ( for capture )
-                new_board.rooks |= 1 << 64 * is_black + (63 - new_index); // Update new knight position
+                new_board.rooks |= 1 << 64 * is_black + (63 - new_index); // Update new rook position
                 legal_boards.push(new_board);
 
                 if self.is_different_color_piece_present(new_index, is_black) {
@@ -76,7 +76,7 @@ impl Board {
                 let mut new_board = self.clone(); // Clone the board to modify it
                 new_board.remove_piece(index); // Remove current rook position
                 new_board.remove_piece(new_index); // Remove existing piece ( for capture )
-                new_board.rooks |= 1 << 64 * is_black + (63 - new_index); // Update new knight position
+                new_board.rooks |= 1 << 64 * is_black + (63 - new_index); // Update new rook position
                 legal_boards.push(new_board);
 
                 if self.is_different_color_piece_present(new_index, is_black) {
@@ -98,7 +98,7 @@ impl Board {
                 let mut new_board = self.clone(); // Clone the board to modify it
                 new_board.remove_piece(index); // Remove current rook position
                 new_board.remove_piece(new_index); // Remove existing piece ( for capture )
-                new_board.rooks |= 1 << 64 * is_black + (63 - new_index); // Update new knight position
+                new_board.rooks |= 1 << 64 * is_black + (63 - new_index); // Update new rook position
                 legal_boards.push(new_board);
 
                 if self.is_different_color_piece_present(new_index, is_black) {
