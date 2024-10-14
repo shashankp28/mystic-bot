@@ -6,13 +6,10 @@ impl Board {
         // TODO: Knight Moves
         // 1. [ X ] All 8 L shape moves around it ( Unless EOB or obstruction ) including capture
         // 2. [ X ] Take care to update castling bits if knight captures opp. rook
-        // 3. [ X ] Take care of updating per move tickers like white/block move, half clock, full number
-        println!( "Generating Knight Moves..." );
         let basic_knight_map: u64 = 21617444997;  // Through Experimentation
         let left_half_board_map: u64 = 17361641481138401520;  // Through Experimentation
         let is_black: u8 = if ( self.metadata >> 8 ) & 1 == 1 { 0 } else { 1 };
         let mut knight_positions: u64 = ( self.knights >> 64*is_black ) as u64;
-        println!( "Found Current Knight Positions.." );
         while knight_positions != 0 {
             // Legal moves for 1 knight
             let pos: u8 = knight_positions.trailing_zeros() as u8;
@@ -61,7 +58,6 @@ impl Board {
 
                 // Update Half & Full move clocks & toggle black / white move
                 new_board.update_tickers( piece_removed, is_black==1 );
-                println!( "Board Hash: {}", new_board.hash() );
                 legal_boards.push( new_board );
 
                 new_knight_map &= !( 1 << new_pos ); // Flip the knight position to 0 
@@ -69,6 +65,7 @@ impl Board {
 
             knight_positions &= !( 1 << pos ); // Flip the knight position to 0 
         }
+        println!( "Number of Legal Moves after Knight: {}", legal_boards.len() );
     }
 
 }
