@@ -12,7 +12,7 @@ git clone https://github.com/shashankp28/mystic-bot.git
 ### Bit-Board Representation
 
 ```rust
-#[derive(Serialize)]
+#[derive( Copy, Clone, Debug, Serialize, Deserialize )]
 pub struct Board {
 
     // Flattended Matrix representation of 8x8 Chess Board, with `a1` at the Top-Left
@@ -30,8 +30,10 @@ pub struct Board {
 
     // 1 bit, whether the board has an en-passant
     // It is not possible for a board to have multiple en-passants at the same time!
-    // ( X, X, X, en_passant, Black o-o, Black o-o-o, White o-o, White o-o-o )
-    pub metadata: u8,
+    // ( [ X bits full move number ], [ 7 bits Half move clock ], is_white_move, en_passant_warn,
+    //   [ 3 bits en_passant_column  ], Black o-o, Black o-o-o, White o-o, White o-o-o )
+    //   --> 16 + fullmove_number / 32 bits used
+    pub metadata: u32,
 }
 ```
 
