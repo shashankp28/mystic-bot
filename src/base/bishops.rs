@@ -65,9 +65,8 @@ impl Board {
                     // Update Tickers
                     new_board.update_tickers( piece_removed, is_black==1 );
 
-                    println!( "Board Hash: {}", new_board.hash() );
                     legal_boards.push( new_board );
-                    // Break if we had reached an opposit ecoloured piece
+                    // Break if we had reached an opposite coloured piece
                     if piece_removed {
                         break;
                     }
