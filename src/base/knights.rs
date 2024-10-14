@@ -5,7 +5,7 @@ impl Board {
     pub fn generate_knight_moves( &mut self, legal_boards: &mut Vec<Board> ) {
         // TODO: Knight Moves
         // 1. [ X ] All 8 L shape moves around it ( Unless EOB or obstruction ) including capture
-        // 2. [  ] Take care to update castling bits if knight captures opp. rook
+        // 2. [ X ] Take care to update castling bits if knight captures opp. rook
         println!( "Generating Knight Moves..." );
         let basic_knight_map: u64 = 21617444997;  // Through Experimentation
         let left_half_board_map: u64 = 17361641481138401520;  // Through Experimentation
