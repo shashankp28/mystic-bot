@@ -69,7 +69,7 @@ impl Board {
         self.metadata ^= 1 << 8; // Updating black / white move
     }
 
-    pub fn remove_castling_for_root( &mut self, colour: &PieceColour, index: u64 ) {
+    pub fn remove_castling_for_rook( &mut self, colour: &PieceColour, index: u64 ) {
         // Removes Castling bit for a rook at index if it is present.
         match colour {
             PieceColour::Black => {
