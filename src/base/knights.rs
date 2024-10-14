@@ -2,7 +2,7 @@ use crate::base::defs::{Board, PieceColour};
 
 impl Board {
 
-    pub fn generate_knight_moves( &mut self, legal_boards: &mut Vec<Board> ) {
+    pub fn generate_knight_moves( &self, legal_boards: &mut Vec<Board> ) {
         // TODO: Knight Moves
         // 1. [ X ] All 8 L shape moves around it ( Unless EOB or obstruction ) including capture
         // 2. [ X ] Take care to update castling bits if knight captures opp. rook
@@ -35,7 +35,7 @@ impl Board {
                 0 => PieceColour::White,
                 _ => PieceColour::Any,
             };
-            new_knight_map &= !self.consolidated_piece_map( curr_colour );
+            new_knight_map &= !self.consolidated_piece_map( &curr_colour );
             
             while new_knight_map != 0 {
                 // Update the legal move in the vector
@@ -51,7 +51,7 @@ impl Board {
                     0 => PieceColour::Black,
                     _ => PieceColour::Any,
                 };
-                new_board.remove_rook_capture_castling(opp_colour, new_index as u64);
+                new_board.remove_castling_for_rook(&opp_colour, new_index as u64);
 
                 let piece_removed = new_board.remove_piece( new_index ); // Remove existing piece ( for capture )
                 new_board.knights |= 1 << 64*is_black+new_pos; // Update new knight position
@@ -80,7 +80,7 @@ mod tests {
     fn test_generate_knight_moves() {
         let file_path = "sample/test/knights.json";
         match Board::from_file( file_path ) {
-            Ok( mut board ) => {
+            Ok( board ) => {
                 println!( "Successfully loaded board: {:?}", board );
                 let mut legal_boards: Vec<Board> = Vec::new();
                 board.generate_knight_moves( &mut legal_boards );

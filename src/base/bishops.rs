@@ -40,7 +40,7 @@ impl Board {
                         0 => PieceColour::White,
                         _ => PieceColour::Any,
                     };
-                    let current_piece_map = self.consolidated_piece_map( curr_colour );
+                    let current_piece_map = self.consolidated_piece_map( &curr_colour );
                     
                     // Break if reached a current coloured piece
                     if current_piece_map & ( 1 << new_pos ) != 0 {
@@ -56,7 +56,7 @@ impl Board {
                         1 => PieceColour::White,
                         _ => PieceColour::Any,
                     };
-                    new_board.remove_rook_capture_castling(opp_colour, new_index as u64);
+                    new_board.remove_castling_for_rook(&opp_colour, new_index as u64);
 
                     let piece_removed = new_board.remove_piece( new_index ); // Remove existing piece ( for capture )
     
@@ -96,7 +96,7 @@ mod tests {
                 println!( "Successfully loaded board: {:?}", board );
                 let mut legal_boards: Vec<Board> = Vec::new();
                 board.generate_bishop_moves( &mut legal_boards );
-                assert_eq!(legal_boards.len(), 14, "Expected 8 legal moves, but got {}", legal_boards.len());
+                assert_eq!(legal_boards.len(), 14, "Expected 14 legal moves, but got {}", legal_boards.len());
                 let num_pieces = [21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 20];
                 let mut expected_count_map = HashMap::new();
                 for &count in &num_pieces {

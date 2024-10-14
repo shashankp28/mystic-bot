@@ -166,3 +166,5 @@ gen/
 # Added by cargo
 
 /target
+
+.vscode/

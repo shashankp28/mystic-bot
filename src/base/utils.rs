@@ -17,7 +17,7 @@ impl Board {
         rooks_count + knights_count + bishops_count + queens_count + kings_count + pawns_count
     }
 
-    pub fn consolidated_piece_map(&self, colour: PieceColour) -> u64 {
+    pub fn consolidated_piece_map(&self, colour: &PieceColour) -> u64 {
         let all_piece_map: u128 =
             self.rooks | self.knights | self.bishops | self.queens | self.kings | self.pawns;
         match colour {
@@ -69,8 +69,8 @@ impl Board {
         self.metadata ^= 1 << 8; // Updating black / white move
     }
 
-    pub fn remove_rook_capture_castling( &mut self, colour: PieceColour, index: u64 ) {
-        // Removes Castling bit for a rook if it is being captured
+    pub fn remove_castling_for_root( &mut self, colour: &PieceColour, index: u64 ) {
+        // Removes Castling bit for a rook at index if it is present.
         match colour {
             PieceColour::Black => {
                 if self.rooks >> 64 as u64 & 1 << (63 - index) != 0 {
@@ -94,7 +94,7 @@ impl Board {
         }
     }
 
-    pub fn remove_castling_bits(&mut self, side: CastleSide, colour: PieceColour) {
+    pub fn remove_castling_bits(&mut self, side: CastleSide, colour: &PieceColour) {
         match colour {
             PieceColour::White => {
                 match side {
