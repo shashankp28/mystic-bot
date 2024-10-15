@@ -1,8 +1,7 @@
 use crate::base::defs::Board;
 
 impl Board {
-
-    pub fn generate_king_moves( &self, legal_boards: &mut Vec<Board> ) {
+    pub fn generate_king_moves(&self, legal_boards: &mut Vec<Board>) {
         // TODO: King Moves
 
         // 1. [ ] All 8 squares around the king except EOB or obstruction including capture
@@ -11,13 +10,16 @@ impl Board {
         // 4. [ ] Take care to update the castling bits ( King and Queenside ) on first king move
         // 5. [ ] Take care to update castling bits if king captures opp. rook
         // 6. [ ] Take care of updating per move tickers like white/block move, half clock, full number
-        println!( "Number of Legal Moves after King: {}", legal_boards.len() );
+        // 7. [X] Take care of removing En-passant on non-pawn move.
+        println!("Number of Legal Moves after King: {}", legal_boards.len());
     }
 
-    pub fn prune_illegal_moves( &self, legal_boards: &mut Vec<Board> ) {
+    pub fn prune_illegal_moves(&self, legal_boards: &mut Vec<Board>) {
         // TODO: Pin / Check analysis
         // 1. [ ] Remove moves in which the king is in check
-        println!( "Number of Legal Moves after Pruning Illegal: {}", legal_boards.len() );
+        println!(
+            "Number of Legal Moves after Pruning Illegal: {}",
+            legal_boards.len()
+        );
     }
-
 }

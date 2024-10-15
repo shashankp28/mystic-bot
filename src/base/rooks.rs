@@ -11,6 +11,7 @@ impl Board {
         // 5. [X] Take care to update the castling bits ( King or Queenside ) on first rook move
         // 6. [X] Take care to update castling bits if rook captures opp. rook
         // 7. [X] Take care of updating per move tickers like white/block move, half clock, full number
+        // 8. [X] Take care of removing En-passant on non-pawn move.
         let is_black: u8 = if (self.metadata >> 8) & 1 == 1 { 0 } else { 1 };
 
         let mut rook_positions: u64 = (self.rooks >> 64 * is_black) as u64;
@@ -21,7 +22,6 @@ impl Board {
             let index: i8 = (63 - pos) as i8;
             let x = index % 8;
             let y = index / 8;
-
 
             let directions: [[i8; 2]; 4] = [[0, 1], [0, -1], [-1, 0], [1, 0]];
 
@@ -65,7 +65,7 @@ impl Board {
 
                     // Update Tickers
                     new_board.update_tickers(piece_removed, is_black == 1);
-
+                    new_board.unmark_enpassant();
                     legal_boards.push(new_board);
                     // Break if we had reached an opposite coloured piece
                     if piece_removed {

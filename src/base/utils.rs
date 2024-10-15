@@ -1,4 +1,4 @@
-use crate::base::defs::{Board, PieceColour, CastleSide};
+use crate::base::defs::{Board, CastleSide, PieceColour};
 use serde_json::to_writer_pretty;
 use std::fs::File;
 use std::hash::DefaultHasher;
@@ -69,7 +69,7 @@ impl Board {
         self.metadata ^= 1 << 8; // Updating black / white move
     }
 
-    pub fn remove_castling_for_rook( &mut self, colour: &PieceColour, index: u64 ) {
+    pub fn remove_castling_for_rook(&mut self, colour: &PieceColour, index: u64) {
         // Removes Castling bit for a rook at index if it is present.
         match colour {
             PieceColour::Black => {
@@ -90,26 +90,43 @@ impl Board {
                     }
                 }
             }
-            PieceColour::Any => { }
+            PieceColour::Any => {}
         }
     }
 
     pub fn remove_castling_bits(&mut self, side: CastleSide, colour: &PieceColour) {
         match colour {
-            PieceColour::White => {
-                match side {
-                    CastleSide::Queen => self.metadata &= !(1 << 0),
-                    CastleSide::King => self.metadata &= !(1 << 1),
-                }
-            }
-            PieceColour::Black => {
-                match side {
-                    CastleSide::Queen => self.metadata &= !(1 << 2),
-                    CastleSide::King => self.metadata &= !(1 << 3),
-                }
-            }
+            PieceColour::White => match side {
+                CastleSide::Queen => self.metadata &= !(1 << 0),
+                CastleSide::King => self.metadata &= !(1 << 1),
+            },
+            PieceColour::Black => match side {
+                CastleSide::Queen => self.metadata &= !(1 << 2),
+                CastleSide::King => self.metadata &= !(1 << 3),
+            },
             PieceColour::Any => {}
         }
+    }
+
+    pub fn mark_enpassant_possible_at(&mut self, x: u8) {
+        
+        // 4 bits for castling, 3 bits for en-passant x, 1 bit for possible or not
+        println!("{:b}, {}", self.metadata, x);
+        self.metadata |= (1 << 7) as u32;
+        self.metadata |= (x << 4) as u32;
+        println!("{:b}, {}", self.metadata, x);
+    }
+
+    pub fn is_enpassant_possible(&self) -> u32 {
+        self.metadata & (1 << 7)
+    }
+
+    pub fn get_enpassant_x(&self) -> i8 {
+        ((self.metadata >> 4) & 0b111) as i8
+    }
+
+    pub fn unmark_enpassant(&mut self) {
+        self.metadata &= !(0b11110000)
     }
 
     pub fn hash(&self) -> u32 {
@@ -144,11 +161,11 @@ impl Board {
         let mut legal_boards = Vec::new();
 
         // Generate all possible legal moves
-        self.generate_rook_moves( &mut legal_boards );
-        self.generate_knight_moves(&mut legal_boards);
-        self.generate_bishop_moves(&mut legal_boards);
-        self.generate_queen_moves(&mut legal_boards);
-        // self.generate_pawn_moves(&mut legal_boards);
+        // self.generate_rook_moves(&mut legal_boards);
+        // self.generate_knight_moves(&mut legal_boards);
+        // self.generate_bishop_moves(&mut legal_boards);
+        // self.generate_queen_moves(&mut legal_boards);
+        self.generate_pawn_moves(&mut legal_boards);
         // self.generate_king_moves(&mut legal_boards);
 
         // Remove moves in which the king is in check
@@ -176,15 +193,14 @@ impl Board {
             }
         }
     }
+}
 
-    pub fn is_same_color_piece_present(&mut self, index: u8, is_black: u8) -> bool {
-        let pos_bitmap: u128 = 1 << 64 * is_black + (63 - index);
-        let all_pieces: u128 =
-            self.bishops | self.kings | self.knights | self.pawns | self.queens | self.rooks;
-        return pos_bitmap & all_pieces != 0;
-    }
-
-    pub fn is_different_color_piece_present(&mut self, index: u8, is_black: u8) -> bool {
-        return self.is_same_color_piece_present(index, (is_black == 0) as u8);
+impl PieceColour {
+    pub fn from_u8(is_black: u8) -> Self {
+        match is_black {
+            0 => PieceColour::White,
+            1 => PieceColour::Black,
+            _ => PieceColour::Any,
+        }
     }
 }

@@ -1,5 +1,6 @@
 use serde::{ Serialize, Deserialize };
 
+#[derive(Debug)]
 pub enum PieceColour {
     Black,
     White,
