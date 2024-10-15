@@ -112,10 +112,6 @@ impl Board {
         }
     }
 
-    pub fn is_square_attacked_by(&self, colour: &PieceColour, index: u64) {
-
-    }
-
     pub fn hash(&self) -> u32 {
         let mut hasher = DefaultHasher::new();
         self.rooks.hash(&mut hasher);
