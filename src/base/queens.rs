@@ -98,24 +98,54 @@ mod tests {
                 println!( "Successfully loaded board: {:?}", board );
                 let mut legal_boards: Vec<Board> = Vec::new();
                 board.generate_queen_moves( &mut legal_boards );
-                assert_eq!(legal_boards.len(), 14, "Expected 14 legal moves, but got {}", legal_boards.len());
+                assert_eq!(legal_boards.len(), 44, "Expected 44 legal moves, but got {}", legal_boards.len());
 
                 let mut board_hashes: HashSet<u32> = HashSet::new();
                 let hashes = [
-                    1439551532,
-                    3595988159,
-                    3513821567,
-                    220017189,
-                    1630175513,
-                    4143046525,
-                    3133200234,
-                    3238303307,
-                    3868057002,
-                    1640948664,
-                    1534285933,
-                    950266451,
-                    400439542,
-                    3509863296,
+                    1481746532,
+                    2028220356,
+                    1733110260,
+                    3880039606,
+                    590834368,
+                    1340525763,
+                    2930087644,
+                    314367264,
+                    3640646963,
+                    4036555365,
+                    3391048210,
+                    1119545477,
+                    3483815918,
+                    2230492272,
+                    4247970404,
+                    3242191527,
+                    2990893449,
+                    969114333,
+                    3681765855,
+                    3021947795,
+                    2896242605,
+                    2025122889,
+                    2423627468,
+                    2959876819,
+                    2208737318,
+                    3965795674,
+                    639665738,
+                    1174105213,
+                    4147033737,
+                    33113689,
+                    3352388842,
+                    2282576045,
+                    3855212428,
+                    508652314,
+                    1119136397,
+                    3380708621,
+                    3037908451,
+                    420563079,
+                    3531276333,
+                    2595101837,
+                    588429608,
+                    168208811,
+                    2031796871,
+                    930302213,
                 ];
                 for &hash in &hashes {
                     board_hashes.insert(hash);
@@ -124,8 +154,9 @@ mod tests {
                     let board_hash = board.hash();
                     assert!(
                         board_hashes.contains(&board_hash),
-                        "Generated board hash {} not found in the predefined hashes.",
-                        board_hash
+                        "Generated board hash {} for {:?} not found in the predefined hashes.",
+                        board_hash,
+                        board
                     );
                 }
 

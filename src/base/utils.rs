@@ -61,7 +61,7 @@ impl Board {
             current_full_number += 1;
         }
         self.metadata &= !(127 << 9);
-        self.metadata &= !(65536 << 16);
+        self.metadata &= !(65535 << 16);
 
         self.metadata |= current_half_clock << 9;
         self.metadata |= current_full_number << 16;
@@ -110,6 +110,10 @@ impl Board {
             }
             PieceColour::Any => {}
         }
+    }
+
+    pub fn is_square_attacked_by(&self, colour: &PieceColour, index: u64) {
+
     }
 
     pub fn hash(&self) -> u32 {

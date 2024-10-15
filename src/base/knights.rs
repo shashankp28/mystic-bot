@@ -87,18 +87,18 @@ mod tests {
 
                 let mut board_hashes: HashSet<u32> = HashSet::new();
                 let hashes = [
-                    1030348420,
-                    1371719443,
-                    2013380954,
-                    884047246,
                     107188117,
                     2672732198,
-                    1084564993,
-                    2685033448,
                     1285286128,
+                    1030348420,
+                    1371719443,
                     1185469671,
                     4272222692,
                     2539113316,
+                    1084564993,
+                    2013380954,
+                    884047246,
+                    2685033448,
                 ];
                 for &hash in &hashes {
                     board_hashes.insert(hash);
@@ -108,7 +108,7 @@ mod tests {
                     assert!(
                         board_hashes.contains(&board_hash),
                         "Generated board hash {} not found in the predefined hashes.",
-                        board_hash
+                        board_hash,
                     );
                 }
 
