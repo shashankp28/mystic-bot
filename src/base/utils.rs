@@ -144,9 +144,9 @@ impl Board {
         let mut legal_boards = Vec::new();
 
         // Generate all possible legal moves
-        self.generate_rook_moves( &mut legal_boards );
-        self.generate_knight_moves(&mut legal_boards);
-        self.generate_bishop_moves(&mut legal_boards);
+        // self.generate_rook_moves( &mut legal_boards );
+        // self.generate_knight_moves(&mut legal_boards);
+        // self.generate_bishop_moves(&mut legal_boards);
         self.generate_queen_moves(&mut legal_boards);
         self.generate_pawn_moves(&mut legal_boards);
         self.generate_king_moves(&mut legal_boards);

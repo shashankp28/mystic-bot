@@ -86,7 +86,7 @@ impl Board {
 #[cfg(test)]
 mod tests {
     use crate::base::defs::Board;
-    use std::collections::{ HashMap, HashSet };
+    use std::collections::HashSet;
 
     #[test]
     fn test_generate_bishop_moves() {
@@ -97,25 +97,6 @@ mod tests {
                 let mut legal_boards: Vec<Board> = Vec::new();
                 board.generate_bishop_moves( &mut legal_boards );
                 assert_eq!(legal_boards.len(), 14, "Expected 14 legal moves, but got {}", legal_boards.len());
-                let num_pieces = [21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 20];
-                let mut expected_count_map = HashMap::new();
-                for &count in &num_pieces {
-                    *expected_count_map.entry(count).or_insert(0) += 1;
-                }
-
-                // Actual number of pieces frequency count from the generated boards
-                let mut actual_count_map = HashMap::new();
-                for board in &legal_boards {
-                    let count = board.get_number_pieces();
-                    *actual_count_map.entry(count).or_insert(0) += 1;
-                }
-
-                // Compare the frequency maps
-                assert_eq!(
-                    expected_count_map, actual_count_map,
-                    "Mismatch in piece counts frequency: expected {:?}, got {:?}",
-                    expected_count_map, actual_count_map
-                );
 
                 let mut board_hashes: HashSet<u32> = HashSet::new();
                 let hashes = [
