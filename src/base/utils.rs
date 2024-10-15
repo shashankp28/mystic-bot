@@ -109,12 +109,9 @@ impl Board {
     }
 
     pub fn mark_enpassant_possible_at(&mut self, x: u8) {
-        
         // 4 bits for castling, 3 bits for en-passant x, 1 bit for possible or not
-        println!("{:b}, {}", self.metadata, x);
         self.metadata |= (1 << 7) as u32;
         self.metadata |= (x << 4) as u32;
-        println!("{:b}, {}", self.metadata, x);
     }
 
     pub fn is_enpassant_possible(&self) -> u32 {

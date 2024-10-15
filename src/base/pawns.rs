@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_generate_pawn_moves() {
-        let file_path = "sample/test/pawns1.json";
+        let file_path = "sample/test/pawns.json";
         match Board::from_file(file_path) {
             Ok(board) => {
                 println!("Successfully loaded board: {:?}", board);
@@ -134,6 +134,8 @@ mod tests {
                     3491521345, 728522481, 987839537, 1470891353, 4213940384, 3609023261,
                     4129321747, 1466863170, 1995571027, 4289011959, 1492947973,
                 ];
+
+                assert_eq!(hashes.len(), legal_boards.len());
                 for &hash in &hashes {
                     board_hashes.insert(hash);
                 }

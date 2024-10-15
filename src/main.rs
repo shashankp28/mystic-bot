@@ -13,25 +13,6 @@ fn generate_game_tree( curr_board: Board, max_depth: u32, num_nodes: &mut u64 ) 
     }
 }
 
-// fn generate_hash_for_boards() -> std::io::Result<()> {
-//     let path = "./sample/test/queen_test/";
-//     for entry in fs::read_dir(path)? {
-//         match entry {
-//             Ok(file_path) => match Board::from_file(file_path.path()) {
-//                 Ok(board) => {
-//                     let hash = board.hash();
-//                     println!("{hash}")
-//                 }
-//                 Err(e) => {
-//                     eprintln!("Error loading the board {}", e)
-//                 }
-//             },
-//             Err(e) => eprintln!("Error: {}", e),
-//         }
-//     }
-//     Ok(())
-// }
-
 fn main() {
     let file_path = "sample/start.json";
     let mut curr_board: Option<Board> = Option::None;
