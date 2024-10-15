@@ -11,12 +11,10 @@ impl Board {
         // 4. [ X ] Every NW ( North-West ) diagonal until EOB or Capture or obstruction
         // 5. [ X ] Take care to update castling bits if bishop captures opp. rook
         // 6. [ X ] Take care of updating per move tickers like white/block move, half clock, full number
-        println!( "Generating Bishop Moves..." );
         let is_black: u8 = if ( self.metadata >> 8 ) & 1 == 1 { 0 } else { 1 };
 
         let mut bishop_positions: u64 = ( self.bishops >> 64*is_black ) as u64;
 
-        println!( "Found Current Bishop Positions.." );
         while bishop_positions != 0 {
             // Legal moves for 1 bishop
             let pos: i8 = bishop_positions.trailing_zeros() as i8;
@@ -77,7 +75,6 @@ impl Board {
             }
             bishop_positions &= !( 1 << pos ); // Flip the bishop position to 0 
         }
-        println!( "Number of Legal Moves after Bishop: {}", legal_boards.len() );
     }
 
 }

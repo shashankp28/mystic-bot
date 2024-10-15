@@ -140,7 +140,7 @@ impl Board {
     // 8. [ ] Keep track and update the Half Move Clock
     // 9. [ ] Keep track and update the Full Move Number
 
-    pub fn get_legal_moves(&mut self) -> Vec<Board> {
+    pub fn get_legal_moves(self) -> Vec<Board> {
         let mut legal_boards = Vec::new();
 
         // Generate all possible legal moves
@@ -148,11 +148,11 @@ impl Board {
         self.generate_knight_moves(&mut legal_boards);
         self.generate_bishop_moves(&mut legal_boards);
         self.generate_queen_moves(&mut legal_boards);
-        self.generate_pawn_moves(&mut legal_boards);
-        self.generate_king_moves(&mut legal_boards);
+        // self.generate_pawn_moves(&mut legal_boards);
+        // self.generate_king_moves(&mut legal_boards);
 
         // Remove moves in which the king is in check
-        self.prune_illegal_moves(&mut legal_boards);
+        // self.prune_illegal_moves(&mut legal_boards);
 
         legal_boards
     }

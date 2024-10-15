@@ -65,7 +65,6 @@ impl Board {
 
             knight_positions &= !( 1 << pos ); // Flip the knight position to 0 
         }
-        println!( "Number of Legal Moves after Knight: {}", legal_boards.len() );
     }
 
 }

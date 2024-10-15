@@ -11,12 +11,10 @@ impl Board {
         // 5. [X] Take care to update the castling bits ( King or Queenside ) on first rook move
         // 6. [X] Take care to update castling bits if rook captures opp. rook
         // 7. [X] Take care of updating per move tickers like white/block move, half clock, full number
-        println!("Generating Rook Moves...");
         let is_black: u8 = if (self.metadata >> 8) & 1 == 1 { 0 } else { 1 };
 
         let mut rook_positions: u64 = (self.rooks >> 64 * is_black) as u64;
 
-        println!("Found Current Rook Positions..");
         while rook_positions != 0 {
             // Legal moves for 1 rook
             let pos: i8 = rook_positions.trailing_zeros() as i8;
@@ -24,7 +22,6 @@ impl Board {
             let x = index % 8;
             let y = index / 8;
 
-            println!("Pos {pos}, Ind{index}");
 
             let directions: [[i8; 2]; 4] = [[0, 1], [0, -1], [-1, 0], [1, 0]];
 
@@ -69,7 +66,6 @@ impl Board {
                     // Update Tickers
                     new_board.update_tickers(piece_removed, is_black == 1);
 
-                    println!("Board Hash: {}", new_board.hash());
                     legal_boards.push(new_board);
                     // Break if we had reached an opposite coloured piece
                     if piece_removed {
@@ -82,7 +78,6 @@ impl Board {
             }
             rook_positions &= !(1 << pos); // Flip the rook position to 0
         }
-        println!("Number of Legal Moves after Rook: {}", legal_boards.len());
     }
 }
 

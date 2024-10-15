@@ -15,12 +15,10 @@ impl Board {
         // 8. [ X ] Every NW ( North-West ) diagonal until EOB or Capture or obstruction
         // 9. [ X ] Take care to update castling bits if queen captures opp. rook
         // 10. [ X ] Take care of updating per move tickers like white/block move, half clock, full number
-        println!( "Generating Queen Moves..." );
         let is_black: u8 = if ( self.metadata >> 8 ) & 1 == 1 { 0 } else { 1 };
 
         let mut queen_positions: u64 = ( self.queens >> 64*is_black ) as u64;
 
-        println!( "Found Current queen Positions.." );
         while queen_positions != 0 {
             // Legal moves for 1 queen
             let pos: i8 = queen_positions.trailing_zeros() as i8;
@@ -69,7 +67,6 @@ impl Board {
 
                     // Update Tickers
                     new_board.update_tickers( piece_removed, is_black==1 );
-                    println!( "Board Hash: {}", new_board.hash() );
                     legal_boards.push( new_board );
                     // Break if we had reached an opposite coloured piece
                     if piece_removed {
@@ -82,7 +79,6 @@ impl Board {
             }
             queen_positions &= !( 1 << pos ); // Flip the queen position to 0 
         }
-        println!( "Number of Legal Moves after Queen: {}", legal_boards.len() );
     }
 
 }
