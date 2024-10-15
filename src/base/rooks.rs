@@ -71,7 +71,7 @@ impl Board {
 
                     println!("Board Hash: {}", new_board.hash());
                     legal_boards.push(new_board);
-                    // Break if we had reached an opposit ecoloured piece
+                    // Break if we had reached an opposite coloured piece
                     if piece_removed {
                         break;
                     }
