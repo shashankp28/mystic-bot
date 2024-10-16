@@ -59,7 +59,7 @@ impl Board {
 
                 // Update Half & Full move clocks & toggle black / white move
                 new_board.update_tickers( piece_removed, is_black==1 );
-                new_board.unmark_enpassant();
+                new_board.set_enpassant( None );
                 legal_boards.push( new_board );
 
                 new_knight_map &= !( 1 << new_pos ); // Flip the knight position to 0 

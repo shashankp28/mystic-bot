@@ -63,7 +63,7 @@ impl Board {
 
                     // Update Tickers
                     new_board.update_tickers(piece_removed, is_black == 1);
-                    new_board.unmark_enpassant();
+                    new_board.set_enpassant( None );
                     legal_boards.push(new_board);
                     // Break if we had reached an opposite coloured piece
                     if piece_removed {

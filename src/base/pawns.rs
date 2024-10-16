@@ -43,7 +43,7 @@ impl Board {
                 new_board.remove_piece(index as u8); // Remove current pawn position
                 new_board.pawns |= 1 << 64 * is_black + new_pos; // Update new pawn position
                 new_board.update_tickers(true, is_black == 1); // Update Tickers
-                new_board.unmark_enpassant();
+                new_board.set_enpassant( None );
                 legal_boards.push(new_board);
             }
 
@@ -59,8 +59,7 @@ impl Board {
                     new_board.remove_piece(index as u8); // Remove current pawn position
                     new_board.pawns |= 1 << 64 * is_black + new_pos; // Update new pawn position
                     new_board.update_tickers(true, is_black == 1); // Update Tickers
-                    new_board.unmark_enpassant();
-                    new_board.mark_enpassant_possible_at(x as u8); // mark en-passant possible at current x.
+                    new_board.set_enpassant( Some( x as u8 ) ); // mark en-passant possible at current x.
                     legal_boards.push(new_board);
                 }
             }
@@ -85,7 +84,7 @@ impl Board {
                         new_index as u64,
                     );
                     new_board.update_tickers(true, is_black == 1); // Update Tickers
-                    new_board.unmark_enpassant();
+                    new_board.set_enpassant( None );
                     legal_boards.push(new_board);
                 }
             }
@@ -106,7 +105,7 @@ impl Board {
                     new_board.pawns |= 1 << 64 * is_black + new_pos; // Update new pawn position
 
                     new_board.update_tickers(true, is_black == 1); // Update Tickers
-                    new_board.unmark_enpassant();
+                    new_board.set_enpassant( None );
                     legal_boards.push(new_board);
                 }
             }

@@ -108,10 +108,15 @@ impl Board {
         }
     }
 
-    pub fn mark_enpassant_possible_at(&mut self, x: u8) {
-        // 4 bits for castling, 3 bits for en-passant x, 1 bit for possible or not
-        self.metadata |= (1 << 7) as u32;
-        self.metadata |= (x << 4) as u32;
+    pub fn set_enpassant(&mut self, x: Option<u8>) {
+        // Clear the en-passant bits (bits 4-7)
+        self.metadata &= !(0b11110000);
+
+        if let Some(pos) = x {
+            // Set the en-passant bit (bit 7) and the position (bits 4-6)
+            self.metadata |= (1 << 7) as u32; // Mark en-passant as possible
+            self.metadata |= (pos << 4) as u32; // Set the en-passant column
+        }
     }
 
     pub fn is_enpassant_possible(&self) -> u32 {
@@ -122,9 +127,6 @@ impl Board {
         ((self.metadata >> 4) & 0b111) as i8
     }
 
-    pub fn unmark_enpassant(&mut self) {
-        self.metadata &= !(0b11110000)
-    }
 
     pub fn hash(&self) -> u32 {
         let mut hasher = DefaultHasher::new();
