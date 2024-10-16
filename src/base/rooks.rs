@@ -66,7 +66,9 @@ impl Board {
                     // Update Tickers
                     new_board.update_tickers(piece_removed, is_black == 1);
                     new_board.set_enpassant( None );
-                    legal_boards.push(new_board);
+                    if new_board.is_legal() {
+                        legal_boards.push(new_board);
+                    }
                     // Break if we had reached an opposite coloured piece
                     if piece_removed {
                         break;
@@ -94,6 +96,7 @@ mod tests {
                 println!("Successfully loaded board: {:?}", board);
                 let mut legal_boards: Vec<Board> = Vec::new();
                 board.generate_rook_moves(&mut legal_boards);
+                assert_eq!(legal_boards.len(), 10, "Expected 10 legal moves, but got {}", legal_boards.len());
 
                 let mut board_hashes: HashSet<u32> = HashSet::new();
                 let hashes = [

@@ -15,7 +15,7 @@ impl Board {
         // 8. [ X ] Every NW ( North-West ) diagonal until EOB or Capture or obstruction
         // 9. [ X ] Take care to update castling bits if queen captures opp. rook
         // 10. [ X ] Take care of updating per move tickers like white/block move, half clock, full number
-        // 11. [X] Take care of removing En-passant on non-pawn move.
+        // 11. [ X ] Take care of removing En-passant on non-pawn move.
         
         let is_black: u8 = if ( self.metadata >> 8 ) & 1 == 1 { 0 } else { 1 };
 
@@ -70,7 +70,9 @@ impl Board {
                     // Update Tickers
                     new_board.update_tickers( piece_removed, is_black==1 );
                     new_board.set_enpassant( None );
-                    legal_boards.push( new_board );
+                    if new_board.is_legal() {
+                        legal_boards.push(new_board);
+                    }
                     // Break if we had reached an opposite coloured piece
                     if piece_removed {
                         break;
@@ -153,13 +155,22 @@ mod tests {
                 for &hash in &hashes {
                     board_hashes.insert(hash);
                 }
+                let mut actual_board_hashes: HashSet<u32> = HashSet::new();
                 for board in &legal_boards {
                     let board_hash = board.hash();
+                    actual_board_hashes.insert(board_hash);
                     assert!(
                         board_hashes.contains(&board_hash),
-                        "Generated board hash {} for {:?} not found in the predefined hashes.",
-                        board_hash,
-                        board
+                        "Generated board hash {} not found in the predefined hashes.",
+                        board_hash
+                    );
+                }
+
+                for &hash in &hashes {
+                    assert!(
+                        actual_board_hashes.contains(&hash),
+                        "Predefined board hash {} not found in the generated hashes.",
+                        hash
                     );
                 }
 

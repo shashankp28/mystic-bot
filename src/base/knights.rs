@@ -6,7 +6,7 @@ impl Board {
         // TODO: Knight Moves
         // 1. [ X ] All 8 L shape moves around it ( Unless EOB or obstruction ) including capture
         // 2. [ X ] Take care to update castling bits if knight captures opp. rook
-        // 3. [X] Take care of removing En-passant on non-pawn move.
+        // 3. [ X ] Take care of removing En-passant on non-pawn move.
         let basic_knight_map: u64 = 21617444997;  // Through Experimentation
         let left_half_board_map: u64 = 17361641481138401520;  // Through Experimentation
         let is_black: u8 = if ( self.metadata >> 8 ) & 1 == 1 { 0 } else { 1 };
@@ -60,7 +60,9 @@ impl Board {
                 // Update Half & Full move clocks & toggle black / white move
                 new_board.update_tickers( piece_removed, is_black==1 );
                 new_board.set_enpassant( None );
-                legal_boards.push( new_board );
+                if new_board.is_legal() {
+                    legal_boards.push(new_board);
+                }
 
                 new_knight_map &= !( 1 << new_pos ); // Flip the knight position to 0 
             }
@@ -105,12 +107,22 @@ mod tests {
                 for &hash in &hashes {
                     board_hashes.insert(hash);
                 }
+                let mut actual_board_hashes: HashSet<u32> = HashSet::new();
                 for board in &legal_boards {
                     let board_hash = board.hash();
+                    actual_board_hashes.insert(board_hash);
                     assert!(
                         board_hashes.contains(&board_hash),
                         "Generated board hash {} not found in the predefined hashes.",
-                        board_hash,
+                        board_hash
+                    );
+                }
+
+                for &hash in &hashes {
+                    assert!(
+                        actual_board_hashes.contains(&hash),
+                        "Predefined board hash {} not found in the generated hashes.",
+                        hash
                     );
                 }
 

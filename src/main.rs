@@ -4,17 +4,18 @@ use std::time::Instant;
 
 fn generate_game_tree( curr_board: Board, max_depth: u32, num_nodes: &mut u64 ) {
 
-    *num_nodes += 1;
     if max_depth == 0 {
         return;
     }
     for board in curr_board.get_legal_moves() {
+        board.save_board(&format!("./sample/perft/{}.json", num_nodes));
+        *num_nodes += 1;
         generate_game_tree(board, max_depth-1, num_nodes);
     }
 }
 
 fn main() {
-    let file_path = "sample/start.json";
+    let file_path = "sample/default.json";
     let mut curr_board: Option<Board> = Option::None;
     match Board::from_file( file_path ) {
         Ok( board ) => {
@@ -32,7 +33,7 @@ fn main() {
     }
 
     if let Some(board) = curr_board {
-        let max_depth = 5;
+        let max_depth = 2;
         let mut num_nodes: u64 = 0;
 
         let start_time = Instant::now();

@@ -10,7 +10,7 @@ impl Board {
         // 4. [ X ] Every NW ( North-West ) diagonal until EOB or Capture or obstruction
         // 5. [ X ] Take care to update castling bits if bishop captures opp. rook
         // 6. [ X ] Take care of updating per move tickers like white/block move, half clock, full number
-        // 7. [X] Take care of removing En-passant on non-pawn move.
+        // 7. [ X ] Take care of removing En-passant on non-pawn move.
 
         let is_black: u8 = if (self.metadata >> 8) & 1 == 1 { 0 } else { 1 };
 
@@ -64,7 +64,9 @@ impl Board {
                     // Update Tickers
                     new_board.update_tickers(piece_removed, is_black == 1);
                     new_board.set_enpassant( None );
-                    legal_boards.push(new_board);
+                    if new_board.is_legal() {
+                        legal_boards.push(new_board);
+                    }
                     // Break if we had reached an opposite coloured piece
                     if piece_removed {
                         break;
@@ -92,13 +94,7 @@ mod tests {
                 println!("Successfully loaded board: {:?}", board);
                 let mut legal_boards: Vec<Board> = Vec::new();
                 board.generate_bishop_moves(&mut legal_boards);
-                assert_eq!(
-                    legal_boards.len(),
-                    14,
-                    "Expected 14 legal moves, but got {}",
-                    legal_boards.len()
-                );
-
+                assert_eq!(legal_boards.len(), 14, "Expected 14 legal moves, but got {}", legal_boards.len());
                 let mut board_hashes: HashSet<u32> = HashSet::new();
                 let hashes = [
                     2101630820, 515292360, 1701416084, 880608653, 3354513348, 3622761442,
@@ -108,13 +104,22 @@ mod tests {
                 for &hash in &hashes {
                     board_hashes.insert(hash);
                 }
+                let mut actual_board_hashes: HashSet<u32> = HashSet::new();
                 for board in &legal_boards {
                     let board_hash = board.hash();
+                    actual_board_hashes.insert(board_hash);
                     assert!(
                         board_hashes.contains(&board_hash),
-                        "Generated board hash {} for {:?} not found in the predefined hashes.",
-                        board_hash,
-                        board,
+                        "Generated board hash {} not found in the predefined hashes.",
+                        board_hash
+                    );
+                }
+
+                for &hash in &hashes {
+                    assert!(
+                        actual_board_hashes.contains(&hash),
+                        "Predefined board hash {} not found in the generated hashes.",
+                        hash
                     );
                 }
             }

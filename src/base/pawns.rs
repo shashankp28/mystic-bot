@@ -44,7 +44,9 @@ impl Board {
                 new_board.pawns |= 1 << 64 * is_black + new_pos; // Update new pawn position
                 new_board.update_tickers(true, is_black == 1); // Update Tickers
                 new_board.set_enpassant( None );
-                legal_boards.push(new_board);
+                if new_board.is_legal() {
+                    legal_boards.push(new_board);
+                }
             }
 
             // Double step if unobstructing. Note that we will never have a pawn at last index.
@@ -60,7 +62,9 @@ impl Board {
                     new_board.pawns |= 1 << 64 * is_black + new_pos; // Update new pawn position
                     new_board.update_tickers(true, is_black == 1); // Update Tickers
                     new_board.set_enpassant( Some( x as u8 ) ); // mark en-passant possible at current x.
-                    legal_boards.push(new_board);
+                    if new_board.is_legal() {
+                        legal_boards.push(new_board);
+                    }
                 }
             }
 
@@ -85,7 +89,9 @@ impl Board {
                     );
                     new_board.update_tickers(true, is_black == 1); // Update Tickers
                     new_board.set_enpassant( None );
-                    legal_boards.push(new_board);
+                    if new_board.is_legal() {
+                        legal_boards.push(new_board);
+                    }
                 }
             }
 
@@ -106,7 +112,9 @@ impl Board {
 
                     new_board.update_tickers(true, is_black == 1); // Update Tickers
                     new_board.set_enpassant( None );
-                    legal_boards.push(new_board);
+                    if new_board.is_legal() {
+                        legal_boards.push(new_board);
+                    }
                 }
             }
             pawn_positions &= !(1 << pos); // Flip the pawn position to 0
@@ -127,6 +135,7 @@ mod tests {
                 println!("Successfully loaded board: {:?}", board);
                 let mut legal_boards: Vec<Board> = Vec::new();
                 board.generate_pawn_moves(&mut legal_boards);
+                assert_eq!(legal_boards.len(), 11, "Expected 11 legal moves, but got {}", legal_boards.len());
 
                 let mut board_hashes: HashSet<u32> = HashSet::new();
                 let hashes = [
@@ -142,6 +151,9 @@ mod tests {
                 let mut actual_board_hashes: HashSet<u32> = HashSet::new();
                 for board in &legal_boards {
                     let board_hash = board.hash();
+                    if actual_board_hashes.contains(&board_hash) {
+                        println!( "DANGER: {:?}", board );
+                    }
                     actual_board_hashes.insert(board_hash);
                     assert!(
                         board_hashes.contains(&board_hash),

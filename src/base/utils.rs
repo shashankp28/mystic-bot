@@ -37,6 +37,7 @@ impl Board {
             | self.knights & removal_map
             | self.bishops & removal_map
             | self.queens & removal_map
+            | self.kings & removal_map
             | self.pawns & removal_map)
             != 0;
         removal_map = !removal_map;
@@ -44,7 +45,7 @@ impl Board {
         self.knights &= removal_map;
         self.bishops &= removal_map;
         self.queens &= removal_map;
-        // self.kings &= removal_map; IF KING SHOULD BE REMOVED, SOMETHING IS WRONG!!
+        self.kings &= removal_map;
         self.pawns &= removal_map;
         piece_removed
     }
@@ -127,6 +128,139 @@ impl Board {
         }
     }
 
+    pub fn can_attack( &self, is_black: u8, target: u8 ) -> bool {
+        // Check if target is same colour
+        let curr_colour: PieceColour = match is_black {
+                1 => PieceColour::Black,
+                0 => PieceColour::White,
+                _ => PieceColour::Any,
+        };
+        let curr_position_map = self.consolidated_piece_map(&curr_colour);
+        if curr_position_map & ( 1 << (63-target) ) != 0 {
+            return false;
+        }
+        let all_piece_map = self.consolidated_piece_map(&PieceColour::Any);
+
+        // Can Bishop+Queen Attack Diagonally?
+        let bishop_positions: u64 = (self.bishops >> 64 * is_black) as u64;
+        let queen_positions: u64 = (self.queens >> 64 * is_black) as u64;
+        let mut bishop_queen_positions: u64 = bishop_positions | queen_positions;
+        let target_x = (target%8) as i8;
+        let target_y = (target/8) as i8;
+        while bishop_queen_positions != 0 {
+            // Pick a direction and go until one step behind the target
+            // To check if there are no obstructions
+            let pos: i8 = bishop_queen_positions.trailing_zeros() as i8;
+            let index: i8 = (63 - pos) as i8;
+            let x = index % 8;
+            let y = index / 8;
+            if (target_x-x).abs() == (target_y-y).abs() {
+                let delta_x = (target_x-x)/(target_x-x).abs();
+                let delta_y = (target_y-y)/(target_y-y).abs();
+                let steps = (target_x-x).abs();
+                let mut attacks = true;
+                for i in 1..steps {
+                    let new_index = x+i*delta_x + 8*(y+i*delta_y);
+                    if all_piece_map & ( 1 << (63-new_index) ) != 0 {
+                        attacks = false;
+                        break;
+                    }
+                }
+                if attacks {
+                    return true;
+                }
+            }
+            
+            bishop_queen_positions &= !(1 << pos);            
+        }
+        
+        // Can Rook+Queen Attack in a straight line?
+        let rook_positions: u64 = (self.rooks >> 64 * is_black) as u64;
+        let mut rook_queen_positions: u64 = rook_positions | queen_positions;
+        while rook_queen_positions != 0 {
+            // Pick a direction and go until one step behind the target
+            // To check if there are no obstructions
+            let pos: i8 = rook_queen_positions.trailing_zeros() as i8;
+            let index: i8 = (63 - pos) as i8;
+            let x = index % 8;
+            let y = index / 8;
+            if (target_x-x).abs() == 0 || (target_y-y).abs() == 0 {
+                let delta_x = if target_x != x { (target_x-x)/(target_x-x).abs() } else { 0 };
+                let delta_y = if target_y != y { (target_y-y)/(target_y-y).abs() } else { 0 };
+                let steps = if target_x != x { (target_x-x).abs() } else { (target_y-y).abs() };
+                let mut attacks = true;
+                for i in 1..steps {
+                    let new_index = x+i*delta_x + 8*(y+i*delta_y);
+                    if all_piece_map & ( 1 << (63 - new_index) ) != 0 {
+                        attacks = false;
+                        break;
+                    }
+                }
+                if attacks {
+                    return true;
+                }
+            }
+            rook_queen_positions &= !(1 << pos);            
+        }
+        
+        // Can Knight Attack?
+        let mut knight_positions: u64 = (self.knights >> 64 * is_black) as u64;
+        while knight_positions != 0 {
+            // Check the delta vector is of the form (+-2, +-1) or (+-1, +-2)
+            let pos: i8 = knight_positions.trailing_zeros() as i8;
+            let index: i8 = (63 - pos) as i8;
+            let x = index % 8;
+            let y = index / 8;
+            let delta_x = (target_x-x).abs();
+            let delta_y = (target_y-y).abs();
+            if (delta_x==2 && delta_y==1) || (delta_x==1 && delta_y==2) {
+                return true;
+            }
+            knight_positions &= !(1 << pos);            
+        }
+        
+        // Can Pawn Attack?
+        let mut pawn_positions: u64 = (self.pawns >> 64 * is_black) as u64;
+        while pawn_positions != 0 {
+            // Check if delta_x absolute value value is 1
+            // Check delta_y is -1 for black and +1 for white
+            let pos: i8 = pawn_positions.trailing_zeros() as i8;
+            let index: i8 = (63 - pos) as i8;
+            let x = index % 8;
+            let y = index / 8;
+            let delta_x = target_x-x;
+            let delta_y = target_y-y;
+            if delta_x.abs() == 1 {
+                if delta_y == (1-2*is_black as i8) {
+                    return true;
+                }
+            }
+            pawn_positions &= !(1 << pos);            
+        }
+
+        // Can King Attack?
+        let king_position: u64 = (self.kings >> 64 * is_black) as u64;
+        let pos: i8 = king_position.trailing_zeros() as i8;
+        let index: i8 = (63 - pos) as i8;
+        let x = index % 8;
+        let y = index / 8;
+        let delta_x = (target_x-x).abs();
+        let delta_y = (target_y-y).abs();
+        if delta_x <= 1 && delta_y <= 1 {
+            return true;
+        }
+
+        return false;
+    }
+
+    pub fn is_legal( &self ) -> bool {
+        let prev_was_black: u8 = if (self.metadata >> 8) & 1 == 1 { 1 } else { 0 };
+        let king_position: u64 = (self.kings >> 64 * prev_was_black) as u64;
+        let pos: i8 = king_position.trailing_zeros() as i8;
+        let index: u8 = (63 - pos) as u8;
+        return !self.can_attack(1-prev_was_black, index);
+    }
+
     pub fn hash(&self) -> u32 {
         let mut hasher = DefaultHasher::new();
         self.rooks.hash(&mut hasher);
@@ -159,15 +293,12 @@ impl Board {
         let mut legal_boards = Vec::new();
 
         // Generate all possible legal moves
-        // self.generate_rook_moves(&mut legal_boards);
-        // self.generate_knight_moves(&mut legal_boards);
-        // self.generate_bishop_moves(&mut legal_boards);
-        // self.generate_queen_moves(&mut legal_boards);
+        self.generate_rook_moves(&mut legal_boards);
+        self.generate_knight_moves(&mut legal_boards);
+        self.generate_bishop_moves(&mut legal_boards);
+        self.generate_queen_moves(&mut legal_boards);
         self.generate_pawn_moves(&mut legal_boards);
-        // self.generate_king_moves(&mut legal_boards);
-
-        // Remove moves in which the king is in check
-        // self.prune_illegal_moves(&mut legal_boards);
+        self.generate_king_moves(&mut legal_boards);
 
         legal_boards
     }

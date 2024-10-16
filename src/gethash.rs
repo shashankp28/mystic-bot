@@ -2,7 +2,7 @@ use crate::base::defs::Board;
 use std::fs;
 
 pub fn generate_hash_for_boards() -> std::io::Result<()> {
-    let path = "./sample/test/rook_test/";
+    let path = "./sample/test/king_test/";
 
     for entry in fs::read_dir(path)? {
         match entry {
