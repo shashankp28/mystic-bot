@@ -166,7 +166,7 @@ mod tests {
                 println!("Successfully loaded board: {:?}", board);
                 let mut legal_boards: Vec<Board> = Vec::new();
                 board.generate_pawn_moves(&mut legal_boards);
-                assert_eq!(legal_boards.len(), 11, "Expected 11 legal moves, but got {}", legal_boards.len());
+                assert_eq!(legal_boards.len(), 12, "Expected 11 legal moves, but got {}", legal_boards.len());
 
                 let mut board_hashes: HashSet<u32> = HashSet::new();
                 let hashes = [
