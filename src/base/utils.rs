@@ -119,14 +119,13 @@ impl Board {
         }
     }
 
-    pub fn is_enpassant_possible(&self) -> u32 {
-        self.metadata & (1 << 7)
+    pub fn get_enpassant(&self) -> Option<i8> {
+        if self.metadata & (1 << 7) != 0 {
+            Some(((self.metadata >> 4) & 0b111) as i8)
+        } else {
+            None
+        }
     }
-
-    pub fn get_enpassant_x(&self) -> i8 {
-        ((self.metadata >> 4) & 0b111) as i8
-    }
-
 
     pub fn hash(&self) -> u32 {
         let mut hasher = DefaultHasher::new();

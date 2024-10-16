@@ -90,8 +90,8 @@ impl Board {
             }
 
             // En-passant implementation
-            if self.is_enpassant_possible() != 0 {
-                let enpassant_x = self.get_enpassant_x();
+            let en_passant_possible: Option<i8> = self.get_enpassant();
+            if let Some(enpassant_x) = en_passant_possible {
                 if (enpassant_x - x).abs() == 1 {
                     let new_index = enpassant_x + (y + 1 * incr_sign) * 8;
                     let new_pos = (63 - new_index) as u8;
