@@ -8,7 +8,6 @@ fn generate_game_tree( curr_board: Board, max_depth: u32, num_nodes: &mut u64 ) 
         return;
     }
     for board in curr_board.get_legal_moves() {
-        board.save_board(&format!("./sample/perft/{}.json", num_nodes));
         *num_nodes += 1;
         generate_game_tree(board, max_depth-1, num_nodes);
     }
