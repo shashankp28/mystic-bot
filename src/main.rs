@@ -1,4 +1,4 @@
-use mystic_bot::base::defs::Board;
+use mystic_bot::{base::defs::Board, gethash::generate_hash_for_boards};
 use std::time::Instant;
 // use std::fs;
 
@@ -14,6 +14,7 @@ fn generate_game_tree( curr_board: Board, max_depth: u32, num_nodes: &mut u64 ) 
 }
 
 fn main() {
+    // _ = generate_hash_for_boards();
     let file_path = "sample/start.json";
     let mut curr_board: Option<Board> = Option::None;
     match Board::from_file( file_path ) {
@@ -31,19 +32,19 @@ fn main() {
         }
     }
 
-    if let Some(board) = curr_board {
-        let max_depth = 5;
-        let mut num_nodes: u64 = 0;
+    // if let Some(board) = curr_board {
+    //     let max_depth = 5;
+    //     let mut num_nodes: u64 = 0;
 
-        let start_time = Instant::now();
-        generate_game_tree(board, max_depth, &mut num_nodes);
-        let duration = start_time.elapsed();
-        let duration_secs = duration.as_secs_f64();
+    //     let start_time = Instant::now();
+    //     generate_game_tree(board, max_depth, &mut num_nodes);
+    //     let duration = start_time.elapsed();
+    //     let duration_secs = duration.as_secs_f64();
 
-        println!("Number of Nodes Traversed: {}", num_nodes);
-        println!("Time Taken: {:.2} seconds", duration_secs);
-        println!("Nodes per second: {:.2}", num_nodes as f64 / duration_secs);
-    } else {
-        println!("Failed to load the board, exiting.");
-    }
+    //     println!("Number of Nodes Traversed: {}", num_nodes);
+    //     println!("Time Taken: {:.2} seconds", duration_secs);
+    //     println!("Nodes per second: {:.2}", num_nodes as f64 / duration_secs);
+    // } else {
+    //     println!("Failed to load the board, exiting.");
+    // }
 }
