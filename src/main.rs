@@ -1,4 +1,4 @@
-use mystic_bot::{base::defs::Board, gethash::generate_hash_for_boards};
+use mystic_bot::base::defs::Board;
 use std::time::Instant;
 // use std::fs;
 
