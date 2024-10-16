@@ -4,13 +4,13 @@ impl Board {
     pub fn generate_king_moves(&self, legal_boards: &mut Vec<Board>) {
         // TODO: King Moves
 
-        // 1. [ ] All 8 squares around the king except EOB or obstruction including capture
-        // 2. [ ] Castling to the King-side
-        // 3. [ ] Castling to the Queen-side
-        // 4. [ ] Take care to update the castling bits ( King and Queenside ) on first king move
-        // 5. [ ] Take care to update castling bits if king captures opp. rook
-        // 6. [ ] Take care of updating per move tickers like white/block move, half clock, full number
-        // 7. [ ] Take care of removing En-passant on non-pawn move.
+        // 1. [ X ] All 8 squares around the king except EOB or obstruction including capture
+        // 2. [ X ] Castling to the King-side
+        // 3. [ X ] Castling to the Queen-side
+        // 4. [ X ] Take care to update the castling bits ( King and Queenside ) on first king move
+        // 5. [ X ] Take care to update castling bits if king captures opp. rook
+        // 6. [ X ] Take care of updating per move tickers like white/block move, half clock, full number
+        // 7. [ X ] Take care of removing En-passant on non-pawn move.
         let is_black: u8 = if ( self.metadata >> 8 ) & 1 == 1 { 0 } else { 1 };
         let king_positions: u64 = ( self.kings >> 64*is_black ) as u64;
         let pos: i8 = king_positions.trailing_zeros() as i8;

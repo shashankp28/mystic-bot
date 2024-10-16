@@ -275,19 +275,19 @@ impl Board {
 
     // TODO: Some Global Rules to take care of:
     //
-    // 1. [ ] A legal move should be discarded, if after making the move current king is under check!!
-    // 2. [ ] Castling can be done only in the following cases
-    //      a. [ ] King and the corresponding rook shouldn't have moved
-    //      b. [ ] The king should not be in check
-    //      c. [ ] The squares the king moves through during castling should not be in check
-    //      d. [ ] There should be no pieces between the king and the corresponding rook
-    // 3. [ ] En-Passant can only be done, `ONLY IMMEDIATELY` after the opponent moves double step pawn
-    // 4. [ ] Check is when the king is directly under threat
-    // 5. [ ] Repeating a sequence of moves 3 times draws
-    // 6. [ ] Checkmate is when king is under check and there are no legal moves (win/lose)
-    // 7. [ ] Stalemate is when there are no legal moves, but the king is not in check (draw)
-    // 8. [ ] Keep track and update the Half Move Clock
-    // 9. [ ] Keep track and update the Full Move Number
+    // 1. [ X ] A legal move should be discarded, if after making the move current king is under check!!
+    // 2. [ X ] Castling can be done only in the following cases
+    //      a. [ X ] King and the corresponding rook shouldn't have moved
+    //      b. [ X ] The king should not be in check
+    //      c. [ X ] The squares the king moves through during castling should not be in check
+    //      d. [ X ] There should be no pieces between the king and the corresponding rook
+    // 3. [ X ] En-Passant can only be done, `ONLY IMMEDIATELY` after the opponent moves double step pawn
+    // 4. [ X ] Check is when the king is directly under threat
+    // 5. [ X ] Repeating a sequence of moves 3 times draws
+    // 6. [ X ] Checkmate is when king is under check and there are no legal moves (win/lose)
+    // 7. [ X ] Stalemate is when there are no legal moves, but the king is not in check (draw)
+    // 8. [ X ] Keep track and update the Half Move Clock
+    // 9. [ X ] Keep track and update the Full Move Number
 
     pub fn get_legal_moves(self) -> Vec<Board> {
         let mut legal_boards = Vec::new();
@@ -330,6 +330,52 @@ impl PieceColour {
             0 => PieceColour::White,
             1 => PieceColour::Black,
             _ => PieceColour::Any,
+        }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::base::defs::Board;
+    use std::time::Instant;
+    use crate::helper::generate_game_tree;
+
+    #[test]
+    fn test_perft() {
+        let file_path = "sample/default.json";
+        let mut curr_board: Option<Board> = Option::None;
+        match Board::from_file( file_path ) {
+            Ok( board ) => {
+                curr_board = Some( board );
+            }
+            Err( e ) => {
+                println!( "Error loading board: {}", e );
+            }
+        }
+
+        let correct_num_nodes = [ 1, 20, 400, 8902, 197281, 4865609, 119060324 ];
+        let mut curr_nodes = 0;
+
+        if let Some(board) = curr_board {
+            for max_depth in 0..7 {
+                let mut num_nodes: u64 = 0;
+
+                let start_time = Instant::now();
+                generate_game_tree(board, max_depth, &mut num_nodes);
+                let duration = start_time.elapsed();
+                let duration_secs = duration.as_secs_f64();
+
+                println!("Depth: {}", max_depth);
+                println!("Number of Nodes Traversed: {}", num_nodes);
+                println!("Time Taken: {:.2} seconds", duration_secs);
+                println!("Nodes per second: {:.2}\n", num_nodes as f64 / duration_secs);
+
+                curr_nodes += correct_num_nodes[ max_depth as usize ];
+                assert_eq!( num_nodes, curr_nodes, "Correct Number of Nodes: {}, But Found: {}, for Depth: {}", num_nodes, curr_nodes, max_depth );
+            }
+        } else {
+            println!("Failed to load the board, exiting.");
         }
     }
 }

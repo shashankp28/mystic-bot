@@ -1,5 +1,4 @@
-use crate::base::defs::Board;
-use crate::base::defs::PieceColour;
+use crate::base::defs::{Board, PieceColour};
 
 impl Board {
     // at the given pos, checks if the pawn is in the last file.

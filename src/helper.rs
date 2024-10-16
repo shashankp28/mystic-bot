@@ -20,3 +20,13 @@ pub fn generate_hash_for_boards() -> std::io::Result<()> {
     }
     Ok(())
 }
+
+pub fn generate_game_tree( curr_board: Board, max_depth: u32, num_nodes: &mut u64 ) {
+    *num_nodes += 1;
+    if max_depth == 0 {
+        return;
+    }
+    for board in curr_board.get_legal_moves() {
+        generate_game_tree(board, max_depth-1, num_nodes);
+    }
+}
