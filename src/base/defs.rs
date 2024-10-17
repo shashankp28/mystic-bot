@@ -58,5 +58,5 @@ pub struct Board {
 #[derive(Debug)]
 pub struct Search {
     pub board: Board,
-    pub memory: HashMap<u64, f64>,
+    pub memory: HashMap<BoardHash, f64>,
 }
