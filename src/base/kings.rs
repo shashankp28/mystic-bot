@@ -156,7 +156,7 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::defs::Board;
+    use crate::base::defs::{Board, BoardHash};
     use std::collections::HashSet;
 
     #[test]
@@ -169,19 +169,19 @@ mod tests {
                 board.generate_king_moves(&mut legal_boards);
                 assert_eq!(legal_boards.len(), 6, "Expected 6 legal moves, but got {}", legal_boards.len());
 
-                let mut board_hashes: HashSet<u32> = HashSet::new();
+                let mut board_hashes: HashSet<u64> = HashSet::new();
                 let hashes = [
-                    686457539,
-                    3694106724,
-                    2666807227,
-                    2816730428,
-                    675698068,
-                    3332104966,
+                    518375765602632387,
+                    902887513263151204,
+                    11268089721562349499,
+                    11500744273320731964,
+                    6918353593318135188,
+                    7168607394553651974,
                 ];
                 for &hash in &hashes {
                     board_hashes.insert(hash);
                 }
-                let mut actual_board_hashes: HashSet<u32> = HashSet::new();
+                let mut actual_board_hashes: HashSet<u64> = HashSet::new();
                 for board in &legal_boards {
                     let board_hash = board.hash();
                     actual_board_hashes.insert(board_hash);
@@ -217,16 +217,16 @@ mod tests {
                 println!( "{:?}", legal_boards );
                 assert_eq!(legal_boards.len(), 3, "Expected 3 legal moves, but got {}", legal_boards.len());
 
-                let mut board_hashes: HashSet<u32> = HashSet::new();
+                let mut board_hashes: HashSet<BoardHash> = HashSet::new();
                 let hashes = [
-                    3405415549,
-                    3599193646,
-                    2716878554,
+                    15388847677281830013,
+                    2479904804525528622,
+                    3108398517801993946,
                 ];
                 for &hash in &hashes {
                     board_hashes.insert(hash);
                 }
-                let mut actual_board_hashes: HashSet<u32> = HashSet::new();
+                let mut actual_board_hashes: HashSet<BoardHash> = HashSet::new();
                 for board in &legal_boards {
                     let board_hash = board.hash();
                     actual_board_hashes.insert(board_hash);

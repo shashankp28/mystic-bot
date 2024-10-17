@@ -76,7 +76,7 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::defs::Board;
+    use crate::base::defs::{Board, BoardHash};
     use std::collections::HashSet;
 
     #[test]
@@ -89,25 +89,25 @@ mod tests {
                 board.generate_knight_moves( &mut legal_boards );
                 assert_eq!(legal_boards.len(), 12, "Expected 12 legal moves, but got {}", legal_boards.len());
 
-                let mut board_hashes: HashSet<u32> = HashSet::new();
+                let mut board_hashes: HashSet<BoardHash> = HashSet::new();
                 let hashes = [
-                    107188117,
-                    2672732198,
-                    1285286128,
-                    1030348420,
-                    1371719443,
-                    1185469671,
-                    4272222692,
-                    2539113316,
-                    1084564993,
-                    2013380954,
-                    884047246,
-                    2685033448,
+                    5820322162005059073,
+                    7248332367856294888,
+                    3343382540968063460,
+                    13734315367842045572,
+                    15671716411796014867,
+                    14442241140689718116,
+                    2629788050489721178,
+                    5902975122334121358,
+                    3148796746828343536,
+                    6017073384496795541,
+                    8083710378863667238,
+                    2302243076185838823,
                 ];
                 for &hash in &hashes {
                     board_hashes.insert(hash);
                 }
-                let mut actual_board_hashes: HashSet<u32> = HashSet::new();
+                let mut actual_board_hashes: HashSet<BoardHash> = HashSet::new();
                 for board in &legal_boards {
                     let board_hash = board.hash();
                     actual_board_hashes.insert(board_hash);

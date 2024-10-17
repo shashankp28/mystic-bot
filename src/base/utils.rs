@@ -6,6 +6,8 @@ use std::hash::{Hash, Hasher};
 use std::io::Read;
 use std::path::Path;
 
+use super::defs::GameState;
+
 impl Board {
     pub fn get_number_pieces(&self) -> u32 {
         let rooks_count = self.rooks.count_ones();
@@ -261,7 +263,21 @@ impl Board {
         return !self.can_attack(1-prev_was_black, index);
     }
 
-    pub fn hash(&self) -> u32 {
+    pub fn get_game_state(&self) -> GameState {
+        if self.get_legal_moves().len() == 0 {
+            let is_black: u8 = if ( self.metadata >> 8 ) & 1 == 1 { 0 } else { 1 };
+            let king_positions: u64 = ( self.kings >> 64*is_black ) as u64;
+            let pos: i8 = king_positions.trailing_zeros() as i8;
+            let index: i8 = ( 63 - pos ) as i8;
+            if self.can_attack(1-is_black, index as u8) {
+                return GameState::Checkmate;
+            }
+            return GameState::Stalemate
+        }
+        return GameState::Playable;
+    }
+
+    pub fn hash(&self) -> u64 {
         let mut hasher = DefaultHasher::new();
         self.rooks.hash(&mut hasher);
         self.knights.hash(&mut hasher);
@@ -270,7 +286,7 @@ impl Board {
         self.kings.hash(&mut hasher);
         self.pawns.hash(&mut hasher);
         self.metadata.hash(&mut hasher);
-        hasher.finish() as u32
+        hasher.finish() as u64
     }
 
     // TODO: Some Global Rules to take care of:
@@ -339,7 +355,7 @@ impl PieceColour {
 mod tests {
     use crate::base::defs::Board;
     use std::time::Instant;
-    use crate::helper::generate_game_tree;
+    use crate::bot::search::generate_game_tree;
 
     #[test]
     fn test_perft() {

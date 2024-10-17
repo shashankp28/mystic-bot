@@ -1,39 +1,21 @@
-use mystic_bot::base::defs::Board;
-use std::time::Instant;
-use mystic_bot::helper::generate_game_tree;
-// use std::fs;
+use mystic_bot::base::defs::{Board, Search};
+use std::collections::HashMap;
 
 fn main() {
-    let file_path = "sample/default.json";
-    let mut curr_board: Option<Board> = Option::None;
+    let file_path: &str = "sample/position.json";
     match Board::from_file( file_path ) {
         Ok( board ) => {
-            curr_board = Some( board );
-            println!( "Successfully loaded board: {:?}", board );
-            let legal_moves: Vec<Board> = board.get_legal_moves();
-            for (i, new_board) in legal_moves.iter().enumerate() {
-                let filename = format!("sample/{}.json", i);
-                new_board.save_board(&filename);
-            }
+            let memory: HashMap<u64, f64> = HashMap::new();
+            let search: Search = Search {
+                board,
+                memory,
+            };
+            let next_board = search.best_next_board();
+
+            next_board.save_board("./sample/position.json");
         }
         Err( e ) => {
             println!( "Error loading board: {}", e );
         }
-    }
-
-    if let Some(board) = curr_board {
-        let max_depth = 3;
-        let mut num_nodes: u64 = 0;
-
-        let start_time = Instant::now();
-        generate_game_tree(board, max_depth, &mut num_nodes);
-        let duration = start_time.elapsed();
-        let duration_secs = duration.as_secs_f64();
-
-        println!("Number of Nodes Traversed: {}", num_nodes);
-        println!("Time Taken: {:.2} seconds", duration_secs);
-        println!("Nodes per second: {:.2}", num_nodes as f64 / duration_secs);
-    } else {
-        println!("Failed to load the board, exiting.");
     }
 }

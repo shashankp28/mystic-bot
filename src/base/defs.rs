@@ -1,4 +1,7 @@
 use serde::{ Serialize, Deserialize };
+use std::collections::HashMap;
+
+pub type BoardHash = u64;
 
 #[derive(Debug)]
 pub enum PieceColour {
@@ -10,6 +13,12 @@ pub enum PieceColour {
 pub enum CastleSide {
     King,
     Queen,
+}
+
+pub enum GameState {
+    Checkmate,
+    Stalemate,
+    Playable,
 }
 
 #[derive( Copy, Clone, Debug, Serialize, Deserialize )]
@@ -34,4 +43,10 @@ pub struct Board {
     //   [ 3 bits en_passant_column  ], Black o-o, Black o-o-o, White o-o, White o-o-o )
     //   --> 16 + fullmove_number / 32 bits used
     pub metadata: u32,
+}
+
+#[derive(Debug)]
+pub struct Search {
+    pub board: Board,
+    pub memory: HashMap<u64, f64>,
 }
