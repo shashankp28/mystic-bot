@@ -22,7 +22,7 @@ fn main() {
     }
 
     if let Some(board) = curr_board {
-        let max_depth = 6;
+        let max_depth = 3;
         let mut num_nodes: u64 = 0;
 
         let start_time = Instant::now();

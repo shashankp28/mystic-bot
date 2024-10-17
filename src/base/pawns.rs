@@ -86,9 +86,10 @@ impl Board {
             if (is_black == 1 && y == 6) || (is_black != 1 && y == 1) {
                 let new_index = (x + (y + 2 * incr_sign) * 8) as u8;
                 let new_pos = (63 - new_index) as u8;
+                let obstruction_map = (2155872256 << 16*(1-is_black) ) >> x;
 
                 // If unobstructing, add to legal boards
-                if all_piece_map & (1 << new_pos) == 0 {
+                if all_piece_map & obstruction_map == 0 {
                     let mut new_board: Board = self.clone(); // Clone the board to modify it
                     new_board.remove_piece(index as u8); // Remove current pawn position
                     new_board.pawns |= 1 << 64 * is_black + new_pos; // Update new pawn position
