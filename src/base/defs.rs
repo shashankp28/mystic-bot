@@ -21,6 +21,16 @@ pub enum GameState {
     Playable,
 }
 
+#[derive(Debug)]
+pub enum PieceType {
+    King,
+    Queen,
+    Rook,
+    Bishop,
+    Knight,
+    Pawn,
+}
+
 #[derive( Copy, Clone, Debug, Serialize, Deserialize )]
 pub struct Board {
 

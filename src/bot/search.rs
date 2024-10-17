@@ -48,7 +48,7 @@ impl Search {
         let is_black: i32 = if ( self.board.metadata >> 8 ) & 1 == 1 { 0 } else { 1 };
         let mut best_move = None;
         let mut best_eval = if is_black==0 { f64::NEG_INFINITY } else { f64::INFINITY };
-        let depth = 4;
+        let depth = 6;
         for next_board in self.board.get_legal_moves() {
             let eval = Search::alpha_beta_pruning(next_board, f64::NEG_INFINITY, f64::INFINITY, depth - 1, is_black==1);
             
