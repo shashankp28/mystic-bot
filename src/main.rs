@@ -9,6 +9,7 @@ fn main() {
             let mut search: Search = Search {
                 board,
                 memory,
+                num_nodes: 0,
             };
             let next_board = search.best_next_board();
 
