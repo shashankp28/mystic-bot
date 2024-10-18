@@ -1,8 +1,9 @@
+use crate::base::defs::LegalMoveVec;
 use crate::base::defs::{Board, GameState, Search};
-use std::cmp::Ordering;
-use std::time::Instant;
 use rand::thread_rng;
 use rand::Rng;
+use std::cmp::Ordering;
+use std::time::Instant;
 
 pub fn generate_game_tree(curr_board: Board, max_depth: u32, num_nodes: &mut u64) {
     *num_nodes += 1;
@@ -15,6 +16,23 @@ pub fn generate_game_tree(curr_board: Board, max_depth: u32, num_nodes: &mut u64
 }
 
 impl Search {
+    fn sort_legal_moves(&mut self, legal_moves: &mut LegalMoveVec, is_black: bool) {
+        legal_moves.data.sort_by(|a, b| {
+            let a_evaluation = a.evaluate();
+            let b_evaluation = b.evaluate();
+
+            let order = a_evaluation
+                .partial_cmp(&b_evaluation)
+                .unwrap_or(Ordering::Equal);
+
+            if is_black {
+                order // Ascending for black
+            } else {
+                order.reverse() // Descending for white
+            }
+        });
+    }
+
     pub fn alpha_beta_pruning(
         &mut self,
         board: Board,
@@ -38,7 +56,7 @@ impl Search {
 
         // If checkmate or draw return appropriate score
         let mut legal_moves = board.get_legal_moves();
-        let is_black: u8 = if ( board.metadata >> 8 ) & 1 == 1 { 0 } else { 1 };
+        let is_black: u8 = if (board.metadata >> 8) & 1 == 1 { 0 } else { 1 };
         let game_state = if legal_moves.len() == 0 {
             let king_positions: u64 = (board.kings >> (64 * is_black)) as u64;
             let pos: i8 = king_positions.trailing_zeros() as i8;
@@ -63,34 +81,7 @@ impl Search {
             GameState::Playable => {}
         }
 
-        legal_moves.data.sort_by(|a, b| {
-            let a_evaluation;
-            let b_evaluation;
-
-            if self.memory.contains_key(&a.hash()) {
-                a_evaluation = *self.memory.get(&a.hash()).unwrap();
-            } else {
-                a_evaluation = board.evaluate();
-                self.memory.insert(a.hash(), a_evaluation);
-            }
-
-            if self.memory.contains_key(&b.hash()) {
-                b_evaluation = *self.memory.get(&b.hash()).unwrap();
-            } else {
-                b_evaluation = board.evaluate();
-                self.memory.insert(b.hash(), b_evaluation);
-            }
-
-            let order = a_evaluation
-                .partial_cmp(&b_evaluation)
-                .unwrap_or(Ordering::Equal);
-
-            if is_black == 1 {
-                order // Ascending for black
-            } else {
-                order.reverse() // Descending for white
-            }
-        });
+        self.sort_legal_moves(&mut legal_moves, is_black == 1);
 
         if maximizing_player {
             let mut max_eval = f64::NEG_INFINITY;
@@ -173,7 +164,7 @@ impl Search {
 
         let mut rng = thread_rng();
         let random_index = rng.gen_range(0..len);
-        
+
         legal_moves.choose(random_index).cloned()
     }
 }
