@@ -132,7 +132,7 @@ impl Search {
         } else {
             f64::INFINITY
         };
-        let depth = 5;
+        let depth = 15;
         for next_board in self.board.get_legal_moves() {
             self.num_nodes += 1;
             let eval = self.alpha_beta_pruning(
