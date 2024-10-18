@@ -1,5 +1,7 @@
 use crate::base::defs::{Board, Search, GameState};
 use std::time::Instant;
+use rand::thread_rng;
+use rand::Rng;
 
 pub fn generate_game_tree( curr_board: Board, max_depth: u32, num_nodes: &mut u64 ) {
     *num_nodes += 1;
@@ -29,7 +31,7 @@ impl Search {
         }
 
         // If checkmate or draw return appropriate score
-        let mut legal_moves = board.get_legal_moves();
+        let legal_moves = board.get_legal_moves();
         let is_black: u8 = if ( board.metadata >> 8 ) & 1 == 1 { 0 } else { 1 };
         let game_state = if legal_moves.len() == 0 {
             let king_positions: u64 = (board.kings >> (64 * is_black)) as u64;
@@ -110,4 +112,17 @@ impl Search {
         best_move
     }
 
+    pub fn random_next_board(&self) -> Option<Board> {
+        let legal_moves = self.board.get_legal_moves();
+        let len = legal_moves.len();
+
+        if len == 0 {
+            return None;
+        }
+
+        let mut rng = thread_rng();
+        let random_index = rng.gen_range(0..len);
+        
+        legal_moves.choose(random_index).cloned()
+    }
 }

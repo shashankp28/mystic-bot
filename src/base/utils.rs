@@ -391,8 +391,12 @@ impl LegalMoveVec {
         }
     }
 
-    pub fn len(&mut self) -> usize {
+    pub fn len(&self) -> usize {
         self.data.len()
+    }
+
+    pub fn choose(&self, index: usize) -> Option<&Board> {
+        self.data.get(index)
     }
 }
 
