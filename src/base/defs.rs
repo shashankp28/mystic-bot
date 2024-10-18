@@ -54,6 +54,12 @@ pub struct Board {
     //   [ 3 bits en_passant_column  ], Black o-o, Black o-o-o, White o-o, White o-o-o )
     //   --> 16 + fullmove_number / 32 bits used
     pub metadata: u32,
+
+    // Will not be Hashed
+    // [ 1 bit is_pawn_promotion ] [ 2 bits for Q, R, B, N promotion ],
+    // [ 1 bit king-side castle ], [1 bit queen side castle], [ 6 bits for source ],
+    // [ 6 bits for destination ] = 17 bits :(
+    pub latest_move: u32,
 }
 
 #[derive(Debug)]

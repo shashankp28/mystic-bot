@@ -66,6 +66,8 @@ impl Board {
             // Remove castling bits as King is moved
             new_board.remove_castling_bits(CastleSide::King, &curr_colour);
             new_board.remove_castling_bits(CastleSide::Queen, &curr_colour);
+            new_board.latest_move = ( ( index << 6 ) as u8 | new_index) as u32;
+            new_board.latest_move &= ( 1 << 12 ) - 1;
             legal_boards.push(&mut new_board);
         }
 
@@ -102,6 +104,7 @@ impl Board {
                     // Remove castling bits as King is moved
                     new_board.remove_castling_bits(CastleSide::King, &curr_colour);
                     new_board.remove_castling_bits(CastleSide::Queen, &curr_colour);
+                    new_board.latest_move = 1 << 13;
                     legal_boards.push(&mut new_board);
                 }
             }
@@ -141,6 +144,7 @@ impl Board {
                     // Remove castling bits as King is moved
                     new_board.remove_castling_bits(CastleSide::King, &curr_colour);
                     new_board.remove_castling_bits(CastleSide::Queen, &curr_colour);
+                    new_board.latest_move = 1 << 12;
                     legal_boards.push(&mut new_board);
                 }
             }
