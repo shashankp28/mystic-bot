@@ -68,7 +68,7 @@ impl Search {
             let b_evaluation;
 
             if self.memory.contains_key(&a.hash()) {
-                a_evaluation = *self.memory.get(&board_hash).unwrap();
+                a_evaluation = *self.memory.get(&a.hash()).unwrap();
             } else {
                 a_evaluation = board.evaluate();
                 self.memory.insert(a.hash(), a_evaluation);
