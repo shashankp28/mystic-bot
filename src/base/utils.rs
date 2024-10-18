@@ -6,8 +6,6 @@ use std::hash::{Hash, Hasher};
 use std::io::Read;
 use std::path::Path;
 
-use super::defs::GameState;
-
 impl Board {
     pub fn get_number_pieces(&self) -> u32 {
         let rooks_count = self.rooks.count_ones();
