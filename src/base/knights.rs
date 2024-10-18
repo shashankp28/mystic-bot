@@ -62,7 +62,7 @@ impl Board {
                 // Update Half & Full move clocks & toggle black / white move
                 new_board.update_tickers( piece_removed, is_black==1 );
                 new_board.set_enpassant( None );
-                new_board.latest_move = ( ( index << 6 ) as u8 | new_index) as u32;
+                new_board.latest_move = ( (index as u32) << 6 | new_index as u32) as u32;
                 new_board.latest_move &= ( 1 << 12 ) - 1;
                 legal_boards.push(&mut new_board);
 
