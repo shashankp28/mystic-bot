@@ -1,11 +1,13 @@
 use crate::base::defs::{Board, PieceColour};
 
+use super::defs::LegalMoveVec;
+
 impl Board {
     // at the given pos, checks if the pawn is in the last file.
     // If pawn is in last file, promote it and add the boards.
     // Else add the current board to legal boards.
     // Marking the castling bits, move tickers should be taken care by the caller.
-    fn check_and_add_promotion(&self, index: u8, is_black: u8, legal_boards: &mut Vec<Board>) {
+    fn check_and_add_promotion(&mut self, index: u8, is_black: u8, legal_boards: &mut LegalMoveVec) {
         let pos = 63 - index;
         let y: u8 = index / 8;
 
@@ -13,28 +15,28 @@ impl Board {
             let mut new_board = self.clone();
             new_board.remove_piece(index as u8);
             new_board.rooks |= 1 << 64 * is_black + pos;
-            legal_boards.push(new_board);
+            legal_boards.push(&mut new_board);
 
             let mut new_board = self.clone();
             new_board.remove_piece(index as u8);
             new_board.bishops |= 1 << 64 * is_black + pos;
-            legal_boards.push(new_board);
+            legal_boards.push(&mut new_board);
 
             let mut new_board = self.clone();
             new_board.remove_piece(index as u8);
             new_board.knights |= 1 << 64 * is_black + pos;
-            legal_boards.push(new_board);
+            legal_boards.push(&mut new_board);
 
             let mut new_board = self.clone();
             new_board.remove_piece(index as u8);
             new_board.queens |= 1 << 64 * is_black + pos;
-            legal_boards.push(new_board);
+            legal_boards.push(&mut new_board);
         } else {
-            legal_boards.push(*self);
+            legal_boards.push(&mut *self);
         }
     }
 
-    pub fn generate_pawn_moves(&self, legal_boards: &mut Vec<Board>) {
+    pub fn generate_pawn_moves(&self, legal_boards: &mut LegalMoveVec) {
         // TODO: Pawn Moves
 
         // 1. [X] Single step forward if unobstructing
@@ -76,9 +78,7 @@ impl Board {
                 new_board.pawns |= 1 << 64 * is_black + new_pos; // Update new pawn position
                 new_board.update_tickers(true, is_black == 1); // Update Tickers
                 new_board.set_enpassant( None );
-                if new_board.is_legal() {
-                    new_board.check_and_add_promotion(new_index, is_black, legal_boards);
-                }
+                new_board.check_and_add_promotion(new_index, is_black, legal_boards);
             }
 
             // Double step if unobstructing. Note that we will never have a pawn at last index.
@@ -95,9 +95,7 @@ impl Board {
                     new_board.pawns |= 1 << 64 * is_black + new_pos; // Update new pawn position
                     new_board.update_tickers(true, is_black == 1); // Update Tickers
                     new_board.set_enpassant( Some( x as u8 ) ); // mark en-passant possible at current x.
-                    if new_board.is_legal() {
-                        legal_boards.push(new_board);
-                    }
+                    legal_boards.push(&mut new_board);
                 }
             }
 
@@ -118,9 +116,7 @@ impl Board {
                     new_board.pawns |= 1 << 64 * is_black + new_pos; // Update new pawn position
                     new_board.update_tickers(true, is_black == 1); // Update Tickers
                     new_board.set_enpassant( None );
-                    if new_board.is_legal() {
-                        new_board.check_and_add_promotion(new_index, is_black, legal_boards);
-                    }
+                    new_board.check_and_add_promotion(new_index, is_black, legal_boards);
                 }
             }
 
@@ -143,9 +139,7 @@ impl Board {
 
                     new_board.update_tickers(true, is_black == 1); // Update Tickers
                     new_board.set_enpassant( None );
-                    if new_board.is_legal() {
-                        legal_boards.push(new_board);
-                    }
+                    legal_boards.push(&mut new_board);
                 }
             }
             pawn_positions &= !(1 << pos); // Flip the pawn position to 0
@@ -155,7 +149,7 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::defs::{Board, BoardHash};
+    use crate::base::defs::{Board, BoardHash, LegalMoveVec};
     use std::collections::HashSet;
 
     #[test]
@@ -164,7 +158,7 @@ mod tests {
         match Board::from_file(file_path) {
             Ok(board) => {
                 println!("Successfully loaded board: {:?}", board);
-                let mut legal_boards: Vec<Board> = Vec::new();
+                let mut legal_boards: LegalMoveVec  = LegalMoveVec::new();
                 board.generate_pawn_moves(&mut legal_boards);
                 assert_eq!(legal_boards.len(), 12, "Expected 12 legal moves, but got {}", legal_boards.len());
 
@@ -190,7 +184,7 @@ mod tests {
                 }
 
                 let mut actual_board_hashes: HashSet<BoardHash> = HashSet::new();
-                for board in &legal_boards {
+                for board in legal_boards {
                     let board_hash = board.hash();
                     actual_board_hashes.insert(board_hash);
                     assert!(

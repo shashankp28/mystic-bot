@@ -15,6 +15,7 @@ pub enum CastleSide {
     Queen,
 }
 
+#[derive( Copy, Clone, Debug, Serialize, Deserialize )]
 pub enum GameState {
     Checkmate,
     Stalemate,
@@ -60,4 +61,9 @@ pub struct Search {
     pub board: Board,
     pub memory: HashMap<BoardHash, f64>,
     pub num_nodes: usize,
+}
+
+#[derive(Debug)]
+pub struct LegalMoveVec {
+    pub data: Vec<Board>,
 }

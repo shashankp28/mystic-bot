@@ -2,6 +2,7 @@ use mystic_bot::base::defs::{Board, Search};
 use std::collections::HashMap;
 
 fn main() {
+
     let file_path: &str = "sample/position.json";
     match Board::from_file( file_path ) {
         Ok( board ) => {
@@ -21,4 +22,5 @@ fn main() {
             println!( "Error loading board: {}", e );
         }
     }
+
 }

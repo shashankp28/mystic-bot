@@ -1,4 +1,4 @@
-use crate::base::defs::{Board, GameState, PieceType};
+use crate::base::defs::{Board, PieceType};
 
 
 
@@ -115,19 +115,7 @@ impl Board {
     }
 
     pub fn evaluate( &self ) -> f64 {
-        let is_black: u8 = if ( self.metadata >> 8 ) & 1 == 1 { 0 } else { 1 };
 
-        match self.get_game_state() {
-            GameState::Checkmate => {
-                if is_black==1 {
-                    return 100000.0;
-                } else {
-                    return -100000.0;
-                }
-            },
-            GameState::Stalemate => return 0.0,
-            GameState::Playable => {}
-        }
         let mut white_score = 0.0;
         white_score += ( ( self.queens as u64).count_ones()*900 ) as f64 ;
         white_score += ( ( self.rooks as u64).count_ones()*500 ) as f64 ;

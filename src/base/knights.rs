@@ -1,8 +1,10 @@
 use crate::base::defs::{Board, PieceColour};
 
+use super::defs::LegalMoveVec;
+
 impl Board {
 
-    pub fn generate_knight_moves( &self, legal_boards: &mut Vec<Board> ) {
+    pub fn generate_knight_moves( &self, legal_boards: &mut LegalMoveVec ) {
         // TODO: Knight Moves
         // 1. [ X ] All 8 L shape moves around it ( Unless EOB or obstruction ) including capture
         // 2. [ X ] Take care to update castling bits if knight captures opp. rook
@@ -60,9 +62,7 @@ impl Board {
                 // Update Half & Full move clocks & toggle black / white move
                 new_board.update_tickers( piece_removed, is_black==1 );
                 new_board.set_enpassant( None );
-                if new_board.is_legal() {
-                    legal_boards.push(new_board);
-                }
+                legal_boards.push(&mut new_board);
 
                 new_knight_map &= !( 1 << new_pos ); // Flip the knight position to 0 
             }
@@ -76,7 +76,7 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::defs::{Board, BoardHash};
+    use crate::base::defs::{Board, BoardHash, LegalMoveVec};
     use std::collections::HashSet;
 
     #[test]
@@ -85,7 +85,7 @@ mod tests {
         match Board::from_file( file_path ) {
             Ok( board ) => {
                 println!( "Successfully loaded board: {:?}", board );
-                let mut legal_boards: Vec<Board> = Vec::new();
+                let mut legal_boards: LegalMoveVec = LegalMoveVec::new();
                 board.generate_knight_moves( &mut legal_boards );
                 assert_eq!(legal_boards.len(), 12, "Expected 12 legal moves, but got {}", legal_boards.len());
 
@@ -108,7 +108,7 @@ mod tests {
                     board_hashes.insert(hash);
                 }
                 let mut actual_board_hashes: HashSet<BoardHash> = HashSet::new();
-                for board in &legal_boards {
+                for board in legal_boards {
                     let board_hash = board.hash();
                     actual_board_hashes.insert(board_hash);
                     assert!(

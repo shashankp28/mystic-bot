@@ -1,4 +1,4 @@
-use crate::base::defs::{Board, CastleSide, PieceColour};
+use crate::base::defs::{Board, CastleSide, PieceColour, LegalMoveVec};
 use serde_json::to_writer_pretty;
 use std::fs::File;
 use std::hash::DefaultHasher;
@@ -263,20 +263,6 @@ impl Board {
         return !self.can_attack(1-prev_was_black, index);
     }
 
-    pub fn get_game_state(&self) -> GameState {
-        if self.get_legal_moves().len() == 0 {
-            let is_black: u8 = if ( self.metadata >> 8 ) & 1 == 1 { 0 } else { 1 };
-            let king_positions: u64 = ( self.kings >> 64*is_black ) as u64;
-            let pos: i8 = king_positions.trailing_zeros() as i8;
-            let index: i8 = ( 63 - pos ) as i8;
-            if self.can_attack(1-is_black, index as u8) {
-                return GameState::Checkmate;
-            }
-            return GameState::Stalemate
-        }
-        return GameState::Playable;
-    }
-
     pub fn hash(&self) -> u64 {
         let mut hasher = DefaultHasher::new();
         self.rooks.hash(&mut hasher);
@@ -305,8 +291,8 @@ impl Board {
     // 8. [ X ] Keep track and update the Half Move Clock
     // 9. [ X ] Keep track and update the Full Move Number
 
-    pub fn get_legal_moves(self) -> Vec<Board> {
-        let mut legal_boards = Vec::new();
+    pub fn get_legal_moves(self) -> LegalMoveVec {
+        let mut legal_boards = LegalMoveVec::new();
 
         // Generate all possible legal moves
         self.generate_rook_moves(&mut legal_boards);
@@ -392,6 +378,34 @@ mod tests {
             }
         } else {
             println!("Failed to load the board, exiting.");
+        }
+    }
+}
+
+impl LegalMoveVec {
+    pub fn new() -> Self {
+        LegalMoveVec { data: Vec::new() }
+    }
+
+    pub fn push(&mut self, board: &mut Board) {
+        if board.is_legal() {
+            self.data.push(*board);
+        }
+    }
+
+    pub fn len(&mut self) -> usize {
+        self.data.len()
+    }
+}
+
+impl Iterator for LegalMoveVec {
+    type Item = Board;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if !self.data.is_empty() {
+            Some(self.data.remove(0))
+        } else {
+            None
         }
     }
 }

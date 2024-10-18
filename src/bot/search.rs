@@ -14,18 +14,46 @@ pub fn generate_game_tree( curr_board: Board, max_depth: u32, num_nodes: &mut u6
 impl Search {
 
     pub fn alpha_beta_pruning(&mut self, board: Board, mut alpha: f64, mut beta: f64, depth: u32, maximizing_player: bool) -> f64 {
-        if depth == 0 || matches!(board.get_game_state(), GameState::Checkmate | GameState::Stalemate) {
-            let eval = board.evaluate();
-            self.memory.insert(board.hash(), eval);
-            return eval;
-        }
-
+        
+        //  Get cached eval score
         let board_hash = board.hash();
         if self.memory.contains_key(&board_hash) {
             return *self.memory.get(&board_hash).unwrap();
         }
 
-        let legal_moves = board.get_legal_moves();
+        //  If depth is 0 evaluate and return
+        if depth == 0 {
+            let eval = board.evaluate();
+            self.memory.insert(board.hash(), eval);
+            return eval;
+        }
+
+        // If checkmate or draw return appropriate score
+        let mut legal_moves = board.get_legal_moves();
+        let is_black: u8 = if ( board.metadata >> 8 ) & 1 == 1 { 0 } else { 1 };
+        let game_state = if legal_moves.len() == 0 {
+            let king_positions: u64 = (board.kings >> (64 * is_black)) as u64;
+            let pos: i8 = king_positions.trailing_zeros() as i8;
+            let index: i8 = 63 - pos;
+            if board.can_attack(1 - is_black, index as u8) {
+                GameState::Checkmate
+            } else {
+                GameState::Stalemate
+            }
+        } else {
+            GameState::Playable
+        };
+        match game_state {
+            GameState::Checkmate => {
+                if is_black==1 {
+                    return 100000.0;
+                } else {
+                    return -100000.0;
+                }
+            },
+            GameState::Stalemate => return 0.0,
+            GameState::Playable => {}
+        }
 
         if maximizing_player {
             let mut max_eval = f64::NEG_INFINITY;

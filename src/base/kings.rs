@@ -1,7 +1,9 @@
 use crate::base::defs::{Board, CastleSide, PieceColour};
 
+use super::defs::LegalMoveVec;
+
 impl Board {
-    pub fn generate_king_moves(&self, legal_boards: &mut Vec<Board>) {
+    pub fn generate_king_moves(&self, legal_boards: &mut LegalMoveVec) {
         // TODO: King Moves
 
         // 1. [ X ] All 8 squares around the king except EOB or obstruction including capture
@@ -64,9 +66,7 @@ impl Board {
             // Remove castling bits as King is moved
             new_board.remove_castling_bits(CastleSide::King, &curr_colour);
             new_board.remove_castling_bits(CastleSide::Queen, &curr_colour);
-            if new_board.is_legal() {
-                legal_boards.push(new_board);
-            }
+            legal_boards.push(&mut new_board);
         }
 
         // King side castling
@@ -102,9 +102,7 @@ impl Board {
                     // Remove castling bits as King is moved
                     new_board.remove_castling_bits(CastleSide::King, &curr_colour);
                     new_board.remove_castling_bits(CastleSide::Queen, &curr_colour);
-                    if new_board.is_legal() {
-                        legal_boards.push(new_board);
-                    }
+                    legal_boards.push(&mut new_board);
                 }
             }
 
@@ -143,9 +141,7 @@ impl Board {
                     // Remove castling bits as King is moved
                     new_board.remove_castling_bits(CastleSide::King, &curr_colour);
                     new_board.remove_castling_bits(CastleSide::Queen, &curr_colour);
-                    if new_board.is_legal() {
-                        legal_boards.push(new_board);
-                    }
+                    legal_boards.push(&mut new_board);
                 }
             }
 
@@ -156,7 +152,7 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::defs::{Board, BoardHash};
+    use crate::base::defs::{Board, BoardHash, LegalMoveVec};
     use std::collections::HashSet;
 
     #[test]
@@ -165,7 +161,7 @@ mod tests {
         match Board::from_file(file_path) {
             Ok(board) => {
                 println!("Successfully loaded board: {:?}", board);
-                let mut legal_boards: Vec<Board> = Vec::new();
+                let mut legal_boards: LegalMoveVec = LegalMoveVec::new();
                 board.generate_king_moves(&mut legal_boards);
                 assert_eq!(legal_boards.len(), 6, "Expected 6 legal moves, but got {}", legal_boards.len());
 
@@ -182,7 +178,7 @@ mod tests {
                     board_hashes.insert(hash);
                 }
                 let mut actual_board_hashes: HashSet<u64> = HashSet::new();
-                for board in &legal_boards {
+                for board in legal_boards {
                     let board_hash = board.hash();
                     actual_board_hashes.insert(board_hash);
                     assert!(
@@ -212,7 +208,7 @@ mod tests {
         match Board::from_file(file_path) {
             Ok(board) => {
                 println!("Successfully loaded board: {:?}", board);
-                let mut legal_boards: Vec<Board> = Vec::new();
+                let mut legal_boards:  LegalMoveVec = LegalMoveVec::new();
                 board.generate_king_moves(&mut legal_boards);
                 println!( "{:?}", legal_boards );
                 assert_eq!(legal_boards.len(), 3, "Expected 3 legal moves, but got {}", legal_boards.len());
@@ -227,7 +223,7 @@ mod tests {
                     board_hashes.insert(hash);
                 }
                 let mut actual_board_hashes: HashSet<BoardHash> = HashSet::new();
-                for board in &legal_boards {
+                for board in legal_boards {
                     let board_hash = board.hash();
                     actual_board_hashes.insert(board_hash);
                     assert!(
