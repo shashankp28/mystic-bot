@@ -26,6 +26,12 @@ impl Board {
             let y = index / 8;
 
             let directions: [[i8; 2]; 4] = [[0, 1], [0, -1], [-1, 0], [1, 0]];
+            let curr_colour: PieceColour = match is_black {
+                1 => PieceColour::Black,
+                0 => PieceColour::White,
+                _ => PieceColour::Any,
+            };
+            let current_piece_map = self.consolidated_piece_map(&curr_colour);
 
             for [delta_x, delta_y] in &directions {
                 let mut new_x = x + delta_x;
@@ -36,12 +42,6 @@ impl Board {
                     }
                     let new_index = (new_x + new_y * 8) as u8;
                     let new_pos = (63 - new_index) as u8;
-                    let curr_colour: PieceColour = match is_black {
-                        1 => PieceColour::Black,
-                        0 => PieceColour::White,
-                        _ => PieceColour::Any,
-                    };
-                    let current_piece_map = self.consolidated_piece_map(&curr_colour);
 
                     // Break if reached a current coloured piece
                     if current_piece_map & (1 << new_pos) != 0 {

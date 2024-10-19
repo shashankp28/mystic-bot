@@ -31,6 +31,7 @@ impl Board {
         };
         let directions: [[i8; 2]; 8] = [ [ 1, 1 ], [ 1, -1 ], [ -1, 1 ], [ -1, -1 ],
                                          [ 1, 0 ], [ 0, 1 ], [ -1, 0 ], [ 0, -1 ], ];
+        let current_piece_map = self.consolidated_piece_map( &curr_colour );
 
         // Standard King Moves
         for [ delta_x, delta_y ] in directions {
@@ -44,7 +45,6 @@ impl Board {
             let new_pos = (63 - new_index) as u8;
 
             // Break if hit a current coloured piece
-            let current_piece_map = self.consolidated_piece_map( &curr_colour );
             if current_piece_map & ( 1 << new_pos ) != 0 {
                 continue;
             }
@@ -71,6 +71,7 @@ impl Board {
             legal_boards.push(&mut new_board);
         }
 
+        let all_piece_map = self.consolidated_piece_map(&PieceColour::Any);
         // King side castling
         // Check Castling bits
         if ( self.metadata >> ( 1+2*is_black ) ) & 1 != 0 {
@@ -78,7 +79,6 @@ impl Board {
             // Hopefully the code would have flipped the castling bits
             // if the king or the rook moved
             // Check for obstructions
-            let all_piece_map = self.consolidated_piece_map(&PieceColour::Any);
             if ( all_piece_map >> 57-56*is_black & 3 ) == 0 {
                 // Check no squres in between are under threat
                 let target = if is_black==1 { [60, 61, 62] } else { [4, 5, 6] };
@@ -118,7 +118,6 @@ impl Board {
             // Hopefully the code would have flipped the castling bits
             // if the king or the rook moved
             // Check for obstructions
-            let all_piece_map = self.consolidated_piece_map(&PieceColour::Any);
             if ( all_piece_map >> 60-56*is_black & 7 ) == 0 {
                 // Check no squres in between are under threat
                 let target = if is_black==1 { [60, 59, 58] } else { [4, 3, 2] };

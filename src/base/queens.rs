@@ -32,6 +32,17 @@ impl Board {
 
             let directions: [[i8; 2]; 8] = [ [ 1, 1 ], [ 1, -1 ], [ -1, 1 ], [ -1, -1 ],
                                              [ 1, 0 ], [ 0, 1 ], [ -1, 0 ], [ 0, -1 ], ];
+            let curr_colour: PieceColour = match is_black {
+                1 => PieceColour::Black,
+                0 => PieceColour::White,
+                _ => PieceColour::Any,
+            };
+            let opp_colour: PieceColour = match is_black {
+                0 => PieceColour::Black,
+                1 => PieceColour::White,
+                _ => PieceColour::Any,
+            };
+            let current_piece_map = self.consolidated_piece_map( &curr_colour );
 
             for [delta_x, delta_y] in &directions {
                 let mut new_x = x + delta_x;
@@ -42,12 +53,6 @@ impl Board {
                     }
                     let new_index = (new_x + new_y*8) as u8;
                     let new_pos = (63-new_index) as u8;
-                    let curr_colour: PieceColour = match is_black {
-                        1 => PieceColour::Black,
-                        0 => PieceColour::White,
-                        _ => PieceColour::Any,
-                    };
-                    let current_piece_map = self.consolidated_piece_map( &curr_colour );
                     
                     // Break if reached a current coloured piece
                     if current_piece_map & ( 1 << new_pos ) != 0 {
@@ -58,11 +63,6 @@ impl Board {
                     new_board.remove_piece( index as u8 ); // Remove current queen position
 
                     // If I removed opp. rook, I update their castling bits
-                    let opp_colour: PieceColour = match is_black {
-                        0 => PieceColour::Black,
-                        1 => PieceColour::White,
-                        _ => PieceColour::Any,
-                    };
                     new_board.remove_castling_for_rook(&opp_colour, new_index as u64);
 
                     let piece_removed = new_board.remove_piece( new_index ); // Remove existing piece ( for capture )

@@ -13,6 +13,12 @@ impl Board {
         let left_half_board_map: u64 = 17361641481138401520;  // Through Experimentation
         let is_black: u8 = if ( self.metadata >> 8 ) & 1 == 1 { 0 } else { 1 };
         let mut knight_positions: u64 = ( self.knights >> 64*is_black ) as u64;
+        let curr_colour: PieceColour = match is_black {
+            1 => PieceColour::Black,
+            0 => PieceColour::White,
+            _ => PieceColour::Any,
+        };
+        let same_piece_map = self.consolidated_piece_map( &curr_colour );
         while knight_positions != 0 {
             // Legal moves for 1 knight
             let pos: u8 = knight_positions.trailing_zeros() as u8;
@@ -33,12 +39,7 @@ impl Board {
             }
 
             // Remove all bits where the knight jumps on same coloured piece
-            let curr_colour: PieceColour = match is_black {
-                1 => PieceColour::Black,
-                0 => PieceColour::White,
-                _ => PieceColour::Any,
-            };
-            new_knight_map &= !self.consolidated_piece_map( &curr_colour );
+            new_knight_map &= !same_piece_map;
             
             while new_knight_map != 0 {
                 // Update the legal move in the vector
