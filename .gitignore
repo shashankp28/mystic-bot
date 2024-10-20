@@ -168,3 +168,5 @@ gen/
 /target
 
 .vscode/
+
+stockfish
