@@ -1,0 +1,39 @@
+{
+    "Sorted Bots": {
+        "200": {
+            "Stock Fish": 0,
+            "Bot": 7,
+            "Draw": 3
+        },
+        "500": {
+            "Stock Fish": 1,
+            "Bot": 7,
+            "Draw": 2
+        },
+        "800": {
+            "Stock Fish": 0,
+            "Bot": 8,
+            "Draw": 2
+        },
+        "1100": {
+            "Stock Fish": 0,
+            "Bot": 8,
+            "Draw": 2
+        },
+        "1500": {
+            "Stock Fish": 0,
+            "Bot": 6,
+            "Draw": 4
+        },
+        "2000": {
+            "Stock Fish": 2,
+            "Bot": 1,
+            "Draw": 7
+        },
+        "3000": {
+            "Stock Fish": 8,
+            "Bot": 0,
+            "Draw": 2
+        }
+    }
+}
