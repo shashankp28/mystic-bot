@@ -27,6 +27,7 @@ fn main() {
                 board,
                 memory,
                 num_nodes: 0,
+                max_depth: 5,
             };
 
             // Start timing if a limit is provided

@@ -68,9 +68,9 @@ impl Search {
         match game_state {
             GameState::Checkmate => {
                 if is_black == 1 {
-                    return 100000.0*( depth as f64 );
+                    return 100000.0*( 100.0 - ( self.max_depth - depth ) as f64 );
                 } else {
-                    return -100000.0*( depth as f64 );
+                    return -100000.0*( 100.0 - ( self.max_depth - depth ) as f64 );
                 }
             }
             GameState::Stalemate => return 0.0,
@@ -117,11 +117,10 @@ impl Search {
             f64::INFINITY
         };
 
-        let mut depth = 5;
         let legal_moves = self.board.get_legal_moves();
 
         // Depth search loop
-        while depth <= 15 && Instant::now().duration_since(*start_time) < time_limit {
+        while self.max_depth <= 15 && Instant::now().duration_since(*start_time) < time_limit {
             let mut local_best_move: Option<Board> = None;
             let mut local_best_eval = if is_black == 0 {
                 f64::NEG_INFINITY
@@ -138,7 +137,7 @@ impl Search {
                     next_board,
                     f64::NEG_INFINITY,
                     f64::INFINITY,
-                    depth - 1,
+                    self.max_depth - 1,
                     is_black == 1,
                     time_limit,
                     start_time,
@@ -163,7 +162,7 @@ impl Search {
             best_eval = local_best_eval;
             best_move = local_best_move;
 
-            depth += 1; // Increment depth for the next iteration
+            self.max_depth += 1; // Increment depth for the next iteration
         }
 
         // Calculate elapsed time
@@ -172,7 +171,7 @@ impl Search {
         // Output evaluation details
         println!("Evaluation Function: {}", best_eval);
         println!("Number of Nodes Explored: {}", self.num_nodes);
-        println!("Depth Explored: {}", depth-1); // Depth adjusted to last successful iteration
+        println!("Depth Explored: {}", self.max_depth-1); // Depth adjusted to last successful iteration
         println!("Time Taken: {:?}", elapsed_time);
         println!(
             "Explored Nodes per second: {:.2}",
