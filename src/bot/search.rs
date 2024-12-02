@@ -3,7 +3,7 @@ use crate::base::defs::{Board, GameState, Search};
 use rand::thread_rng;
 use rand::Rng;
 use std::cmp::Ordering;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 pub fn generate_game_tree(curr_board: Board, max_depth: u32, num_nodes: &mut u64) {
     *num_nodes += 1;
@@ -35,22 +35,18 @@ impl Search {
 
     pub fn alpha_beta_pruning(
         &mut self,
-        board: Board,
+        board: &Board,
         mut alpha: f64,
         mut beta: f64,
         depth: u32,
         maximizing_player: bool,
+        time_limit: Duration,
+        start_time: &Instant,
     ) -> f64 {
-        //  Get cached eval score
-        let board_hash = board.hash();
-        if self.memory.contains_key(&board_hash) {
-            return *self.memory.get(&board_hash).unwrap();
-        }
 
-        //  If depth is 0 evaluate and return
-        if depth == 0 {
+        //  If depth is 0 or time is up evaluate and return
+        if depth == 0 || Instant::now().duration_since(*start_time) > time_limit {
             let eval = board.evaluate();
-            self.memory.insert(board.hash(), eval);
             return eval;
         }
 
@@ -72,9 +68,9 @@ impl Search {
         match game_state {
             GameState::Checkmate => {
                 if is_black == 1 {
-                    return 100000.0;
+                    return 100000.0*( depth as f64 );
                 } else {
-                    return -100000.0;
+                    return -100000.0*( depth as f64 );
                 }
             }
             GameState::Stalemate => return 0.0,
@@ -87,7 +83,7 @@ impl Search {
             let mut max_eval = f64::NEG_INFINITY;
             for next_board in legal_moves {
                 self.num_nodes += 1;
-                let eval = self.alpha_beta_pruning(next_board, alpha, beta, depth - 1, false);
+                let eval = self.alpha_beta_pruning(&next_board, alpha, beta, depth - 1, false, time_limit, start_time);
                 max_eval = max_eval.max(eval);
                 alpha = alpha.max(eval);
                 if beta <= alpha {
@@ -99,7 +95,7 @@ impl Search {
             let mut min_eval = f64::INFINITY;
             for next_board in legal_moves {
                 self.num_nodes += 1;
-                let eval = self.alpha_beta_pruning(next_board, alpha, beta, depth - 1, true);
+                let eval = self.alpha_beta_pruning(&next_board, alpha, beta, depth - 1, true, time_limit, start_time);
                 min_eval = min_eval.min(eval);
                 beta = beta.min(eval);
                 if beta <= alpha {
@@ -110,47 +106,79 @@ impl Search {
         }
     }
 
-    pub fn best_next_board(&mut self) -> Option<Board> {
-        let start_time = Instant::now();
-        let is_black: i32 = if (self.board.metadata >> 8) & 1 == 1 {
-            0
-        } else {
-            1
-        };
-        let mut best_move = None;
+    pub fn best_next_board(&mut self, time_limit: Duration, start_time: &Instant) -> Option<Board> {
+        let local_time = Instant::now();
+        let is_black: i32 = if (self.board.metadata >> 8) & 1 == 1 { 0 } else { 1 };
+
+        let mut best_move: Option<Board> = None;
         let mut best_eval = if is_black == 0 {
             f64::NEG_INFINITY
         } else {
             f64::INFINITY
         };
-        let depth = 5;
-        for next_board in self.board.get_legal_moves() {
-            self.num_nodes += 1;
-            let eval = self.alpha_beta_pruning(
-                next_board,
-                f64::NEG_INFINITY,
-                f64::INFINITY,
-                depth - 1,
-                is_black == 1,
-            );
 
-            if is_black == 0 && eval > best_eval {
-                best_eval = eval;
-                best_move = Some(next_board);
-            } else if is_black == 1 && eval < best_eval {
-                best_eval = eval;
-                best_move = Some(next_board);
+        let mut depth = 5;
+        let legal_moves = self.board.get_legal_moves();
+
+        // Depth search loop
+        while depth <= 15 && Instant::now().duration_since(*start_time) < time_limit {
+            let mut local_best_move: Option<Board> = None;
+            let mut local_best_eval = if is_black == 0 {
+                f64::NEG_INFINITY
+            } else {
+                f64::INFINITY
+            };
+
+            // Iterate over legal moves
+            for next_board in legal_moves.iter() {
+                self.num_nodes += 1;
+
+                // Perform alpha-beta pruning
+                let eval = self.alpha_beta_pruning(
+                    next_board,
+                    f64::NEG_INFINITY,
+                    f64::INFINITY,
+                    depth - 1,
+                    is_black == 1,
+                    time_limit,
+                    start_time,
+                );
+
+                // Update local best move and eval
+                if is_black == 0 && eval > local_best_eval {
+                    local_best_eval = eval;
+                    local_best_move = Some(next_board.clone());
+                } else if is_black == 1 && eval < local_best_eval {
+                    local_best_eval = eval;
+                    local_best_move = Some(next_board.clone());
+                }
             }
+
+            // Stop if time limit is exceeded
+            if Instant::now().duration_since(*start_time) > time_limit {
+                break;
+            }
+
+            // Update global best move as Higher depth ==> Better result
+            best_eval = local_best_eval;
+            best_move = local_best_move;
+
+            depth += 1; // Increment depth for the next iteration
         }
 
-        let elapsed_time = start_time.elapsed();
+        // Calculate elapsed time
+        let elapsed_time = local_time.elapsed();
+
+        // Output evaluation details
         println!("Evaluation Function: {}", best_eval);
         println!("Number of Nodes Explored: {}", self.num_nodes);
+        println!("Depth Explored: {}", depth-1); // Depth adjusted to last successful iteration
         println!("Time Taken: {:?}", elapsed_time);
         println!(
-            "Explored Nodes per second: {}",
+            "Explored Nodes per second: {:.2}",
             self.num_nodes as f64 / elapsed_time.as_secs_f64()
         );
+
         best_move
     }
 

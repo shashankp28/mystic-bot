@@ -398,6 +398,10 @@ impl LegalMoveVec {
     pub fn choose(&self, index: usize) -> Option<&Board> {
         self.data.get(index)
     }
+
+    pub fn iter(&self) -> std::slice::Iter<Board> {
+        self.data.iter()
+    }
 }
 
 impl Iterator for LegalMoveVec {
