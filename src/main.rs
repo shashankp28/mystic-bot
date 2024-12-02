@@ -28,6 +28,7 @@ fn main() {
                 memory,
                 num_nodes: 0,
                 max_depth: 5,
+                num_prunes: 0,
             };
 
             // Start timing if a limit is provided

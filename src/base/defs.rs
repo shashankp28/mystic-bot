@@ -1,4 +1,4 @@
-use serde::{ Serialize, Deserialize };
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 pub type BoardHash = u64;
@@ -15,7 +15,7 @@ pub enum CastleSide {
     Queen,
 }
 
-#[derive( Copy, Clone, Debug, Serialize, Deserialize )]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum GameState {
     Checkmate,
     Stalemate,
@@ -32,9 +32,8 @@ pub enum PieceType {
     Pawn,
 }
 
-#[derive( Copy, Clone, Debug, Serialize, Deserialize )]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Board {
-
     // Flattended Matrix representation of 8x8 Chess Board, with `a1` at the Top-Left
     // Bit is 1 if the corresponding piece is at corresponding index else 0
     // The black and white parts of the boards are concatenated in 64+64 = 128 bits
@@ -68,6 +67,7 @@ pub struct Search {
     pub memory: HashMap<BoardHash, f64>,
     pub num_nodes: usize,
     pub max_depth: u32,
+    pub num_prunes: u32,
 }
 
 #[derive(Debug)]

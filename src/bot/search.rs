@@ -33,6 +33,101 @@ impl Search {
         });
     }
 
+    /// principal variation search
+    /// 
+    /// https://en.wikipedia.org/wiki/Principal_variation_search
+    pub fn pvs(
+        &mut self,
+        board: &Board,
+        mut alpha: f64,
+        mut beta: f64,
+        depth: u32,
+        maximizing_player: bool,
+        time_limit: Duration,
+        start_time: &Instant,
+    ) -> f64 {
+        let color = if maximizing_player { 1.0 } else { -1.0 };
+        //  If depth is 0 or time is up evaluate and return
+        if depth == 0 || Instant::now().duration_since(*start_time) > time_limit {
+            let eval = board.evaluate();
+            return eval * color;
+        }
+        // If checkmate or draw return appropriate score
+        let mut legal_moves = board.get_legal_moves();
+        let is_black: u8 = if (board.metadata >> 8) & 1 == 1 { 0 } else { 1 };
+        let game_state = if legal_moves.len() == 0 {
+            let king_positions: u64 = (board.kings >> (64 * is_black)) as u64;
+            let pos: i8 = king_positions.trailing_zeros() as i8;
+            let index: i8 = 63 - pos;
+            if board.can_attack(1 - is_black, index as u8) {
+                GameState::Checkmate
+            } else {
+                GameState::Stalemate
+            }
+        } else {
+            GameState::Playable
+        };
+        match game_state {
+            GameState::Checkmate => {
+                if is_black == 1 {
+                    return 100000.0 * (depth as f64) * color; // white won
+                } else {
+                    return -100000.0 * (depth as f64) * color;
+                }
+            }
+            GameState::Stalemate => return 0.0,
+            GameState::Playable => {}
+        }
+
+        self.sort_legal_moves(&mut legal_moves, is_black == 1);
+
+        let mut is_first_child = true;
+        let mut score: f64;
+        for next_board in legal_moves {
+            self.num_nodes += 1;
+
+            if is_first_child {
+                score = -self.pvs(
+                    &next_board,
+                    -beta,
+                    -alpha,
+                    depth - 1,
+                    !maximizing_player,
+                    time_limit,
+                    start_time,
+                );
+            } else {
+                score = -self.pvs(
+                    &next_board,
+                    -alpha - 1.0,
+                    -alpha,
+                    depth - 1,
+                    !maximizing_player,
+                    time_limit,
+                    start_time,
+                );
+                if alpha < score && score < beta {
+                    score = -self.pvs(
+                        &next_board,
+                        -beta,
+                        -alpha,
+                        depth - 1,
+                        !maximizing_player,
+                        time_limit,
+                        start_time,
+                    )
+                }
+            }
+            alpha = alpha.max(score);
+            if alpha >= beta {
+                self.num_prunes += 1;
+                break;
+            }
+            is_first_child = false;
+        }
+        alpha
+    }
+
     pub fn alpha_beta_pruning(
         &mut self,
         board: &Board,
@@ -87,6 +182,7 @@ impl Search {
                 max_eval = max_eval.max(eval);
                 alpha = alpha.max(eval);
                 if beta <= alpha {
+                    self.num_prunes += depth;
                     break;
                 }
             }
@@ -99,6 +195,7 @@ impl Search {
                 min_eval = min_eval.min(eval);
                 beta = beta.min(eval);
                 if beta <= alpha {
+                    self.num_prunes += depth;
                     break;
                 }
             }
@@ -132,8 +229,9 @@ impl Search {
             for next_board in legal_moves.iter() {
                 self.num_nodes += 1;
 
-                // Perform alpha-beta pruning
-                let eval = self.alpha_beta_pruning(
+
+                let color = if is_black == 1 { 1.0 } else { -1.0 };
+                let eval = self.pvs(
                     next_board,
                     f64::NEG_INFINITY,
                     f64::INFINITY,
@@ -141,7 +239,18 @@ impl Search {
                     is_black == 1,
                     time_limit,
                     start_time,
-                );
+                ) * color;
+
+                // // Perform alpha-beta pruning
+                // let eval = self.alpha_beta_pruning(
+                //     next_board,
+                //     f64::NEG_INFINITY,
+                //     f64::INFINITY,
+                //     depth - 1,
+                //     is_black == 1,
+                //     time_limit,
+                //     start_time,
+                // );
 
                 // Update local best move and eval
                 if is_black == 0 && eval > local_best_eval {
@@ -172,7 +281,8 @@ impl Search {
         println!("Evaluation Function: {}", best_eval);
         println!("Number of Nodes Explored: {}", self.num_nodes);
         println!("Depth Explored: {}", self.max_depth-1); // Depth adjusted to last successful iteration
-        println!("Time Taken: {:?}", elapsed_time);
+        println!("Number of Nodes Pruned: {}", self.num_prunes);
+        println!("Time Taken: {:?}", elapsed_time.as_millis());
         println!(
             "Explored Nodes per second: {:.2}",
             self.num_nodes as f64 / elapsed_time.as_secs_f64()
