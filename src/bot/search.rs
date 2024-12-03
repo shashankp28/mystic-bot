@@ -40,7 +40,7 @@ impl Search {
         &mut self,
         board: &Board,
         mut alpha: f64,
-        mut beta: f64,
+        beta: f64,
         depth: u32,
         maximizing_player: bool,
         time_limit: Duration,
