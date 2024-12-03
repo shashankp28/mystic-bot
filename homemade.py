@@ -118,10 +118,10 @@ class MysticBot(ExampleEngine):
         latestMove = bitMap[ 'latest_move' ]
         isKingSideCastle = ( latestMove >> 13 ) & 1
         if isKingSideCastle != 0:
-            return 'e1g1' if isWhite else 'e8g8'
+            return 'e1g1' if not isWhite else 'e8g8'
         isQueenSideCastle = ( latestMove >> 12 ) & 1
         if isQueenSideCastle != 0:
-            return 'e1c1' if isWhite else 'e8c8'
+            return 'e1c1' if not isWhite else 'e8c8'
         source = ( latestMove >> 6 ) & 63
         destination = latestMove & 63
         sourceX, sourceY = source%8, source//8
@@ -222,7 +222,8 @@ class MysticBot(ExampleEngine):
         self.chessBoard = None
 
         self.set_fen_position( board.fen() )
-        move, _ = self.get_best_move()
+        move, result = self.get_best_move()
+        print(result, move)
         moveObj = chess.Move.from_uci(move)        
 
         return PlayResult(moveObj, None, draw_offered=draw_offered)
