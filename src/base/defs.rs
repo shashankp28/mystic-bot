@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+// use serde_json::Value;
 
 pub type BoardHash = u64;
 
@@ -65,6 +66,7 @@ pub struct Board {
 pub struct Search {
     pub board: Board,
     pub memory: HashMap<BoardHash, f64>,
+    // pub opening_db: &Value,
     pub num_nodes: usize,
     pub max_depth: u32,
     pub num_prunes: u32,
