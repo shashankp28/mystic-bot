@@ -66,7 +66,7 @@ impl Board {
             // Remove castling bits as King is moved
             new_board.remove_castling_bits(CastleSide::King, &curr_colour);
             new_board.remove_castling_bits(CastleSide::Queen, &curr_colour);
-            new_board.latest_move = ( (index as u32) << 6 | new_index as u32) as u32;
+            new_board.latest_move = ( (index as u16) << 6 | new_index as u16) as u16;
             new_board.latest_move &= ( 1 << 12 ) - 1;
             legal_boards.push(&mut new_board);
         }
@@ -104,7 +104,11 @@ impl Board {
                     // Remove castling bits as King is moved
                     new_board.remove_castling_bits(CastleSide::King, &curr_colour);
                     new_board.remove_castling_bits(CastleSide::Queen, &curr_colour);
-                    new_board.latest_move = 1 << 13;
+                    if is_black == 0 {
+                        new_board.latest_move |= 2161;  // UCI e1g1 100-001 110-001
+                    } else {
+                        new_board.latest_move |= 2551;  // UCI e8g8 100-111 110-111
+                    }
                     legal_boards.push(&mut new_board);
                 }
             }
@@ -143,7 +147,11 @@ impl Board {
                     // Remove castling bits as King is moved
                     new_board.remove_castling_bits(CastleSide::King, &curr_colour);
                     new_board.remove_castling_bits(CastleSide::Queen, &curr_colour);
-                    new_board.latest_move = 1 << 12;
+                    if is_black == 0 {
+                        new_board.latest_move |= 2129;  // UCI e1c1 100-001 010-001
+                    } else {
+                        new_board.latest_move |= 2519;  // UCI e8c8 100-111 010-111
+                    }
                     legal_boards.push(&mut new_board);
                 }
             }

@@ -14,27 +14,28 @@ impl Board {
         if (is_black == 1 && y == 0) || (is_black == 0 && y == 7) {
             let mut new_board = self.clone();
             new_board.remove_piece(index as u8);
+            new_board.queens |= 1 << 64 * is_black + pos;
+            new_board.latest_move |= 4 << 12;  // 1 00
+
+            legal_boards.push(&mut new_board);
+            let mut new_board = self.clone();
+            new_board.remove_piece(index as u8);
             new_board.rooks |= 1 << 64 * is_black + pos;
-            new_board.latest_move |= 5 << 14;  // 1 01
+            new_board.latest_move |= 5 << 12;  // 1 01
             legal_boards.push(&mut new_board);
 
             let mut new_board = self.clone();
             new_board.remove_piece(index as u8);
             new_board.bishops |= 1 << 64 * is_black + pos;
-            new_board.latest_move |= 6 << 14;  // 1 10
+            new_board.latest_move |= 6 << 12;  // 1 10
             legal_boards.push(&mut new_board);
 
             let mut new_board = self.clone();
             new_board.remove_piece(index as u8);
             new_board.knights |= 1 << 64 * is_black + pos;
-            new_board.latest_move |= 7 << 14;  // 1 11
+            new_board.latest_move |= 7 << 12;  // 1 11
             legal_boards.push(&mut new_board);
 
-            let mut new_board = self.clone();
-            new_board.remove_piece(index as u8);
-            new_board.queens |= 1 << 64 * is_black + pos;
-            new_board.latest_move |= 4 << 14;  // 1 00
-            legal_boards.push(&mut new_board);
         } else {
             legal_boards.push(&mut *self);
         }
@@ -82,7 +83,7 @@ impl Board {
                 new_board.pawns |= 1 << 64 * is_black + new_pos; // Update new pawn position
                 new_board.update_tickers(true, is_black == 1); // Update Tickers
                 new_board.set_enpassant( None );
-                new_board.latest_move = ( (index as u32) << 6 | new_index as u32) as u32;
+                new_board.latest_move = ( (index as u16) << 6 | new_index as u16) as u16;
                 new_board.latest_move &= ( 1 << 12 ) - 1;
                 new_board.check_and_add_promotion(new_index, is_black, legal_boards);
             }
@@ -101,7 +102,7 @@ impl Board {
                     new_board.pawns |= 1 << 64 * is_black + new_pos; // Update new pawn position
                     new_board.update_tickers(true, is_black == 1); // Update Tickers
                     new_board.set_enpassant( Some( x as u8 ) ); // mark en-passant possible at current x.
-                    new_board.latest_move = ( (index as u32) << 6 | new_index as u32) as u32;
+                    new_board.latest_move = ( (index as u16) << 6 | new_index as u16) as u16;
                     new_board.latest_move &= ( 1 << 12 ) - 1;
                     legal_boards.push(&mut new_board);
                 }
@@ -124,7 +125,7 @@ impl Board {
                     new_board.pawns |= 1 << 64 * is_black + new_pos; // Update new pawn position
                     new_board.update_tickers(true, is_black == 1); // Update Tickers
                     new_board.set_enpassant( None );
-                    new_board.latest_move = ( (index as u32) << 6 | new_index as u32) as u32;
+                    new_board.latest_move = ( (index as u16) << 6 | new_index as u16) as u16;
                     new_board.latest_move &= ( 1 << 12 ) - 1;
                     new_board.check_and_add_promotion(new_index, is_black, legal_boards);
                 }
@@ -149,7 +150,7 @@ impl Board {
 
                     new_board.update_tickers(true, is_black == 1); // Update Tickers
                     new_board.set_enpassant( None );
-                    new_board.latest_move = ( (index as u32) << 6 | new_index as u32) as u32;
+                    new_board.latest_move = ( (index as u16) << 6 | new_index as u16) as u16;
                     new_board.latest_move &= ( 1 << 12 ) - 1;
                     legal_boards.push(&mut new_board);
                 }

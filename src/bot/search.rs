@@ -1,12 +1,13 @@
 extern crate random_choice;
 use crate::base::defs::LegalMoveVec;
 use crate::base::defs::{Board, GameState, Search};
+use crate::base::utils::uci_to_uint;
 use rand::thread_rng;
 use rand::Rng;
 use std::cmp::Ordering;
 use std::time::{Duration, Instant};
-// use serde_json::Value;
-// use self::random_choice::random_choice;
+use serde_json::Value;
+use self::random_choice::random_choice;
 
 pub fn generate_game_tree(curr_board: Board, max_depth: u32, num_nodes: &mut u64) {
     *num_nodes += 1;
@@ -294,59 +295,64 @@ impl Search {
         best_move
     }
 
-    // pub fn search_opening_db(&self) -> Option<Board> {
-    //     // Check if board.hash() exists in the opening_db
-    //     let board_hash = self.board.hash();
-    //     let is_black: u8 = if (self.board.metadata >> 8) & 1 == 1 { 0 } else { 1 };
-    //     let curr_colour = if is_black==1 { "black" } else { "white" };
-    //     let opp_colour = if is_black==1 { "white" } else { "black" };
-    //     if let Some(entry) = self.opening_db.get(&board_hash.to_string()) {
-    //         println!("Found hash in opening database: {:?}", board_hash);
+    pub fn search_opening_db(&self) -> Option<Board> {
+        // Check if board.hash() exists in the opening_db
+        let board_hash = self.board.hash();
+        // let is_black: u8 = if (self.board.metadata >> 8) & 1 == 1 { 0 } else { 1 };
+        // let curr_colour = if is_black==1 { "black" } else { "white" };
+        // let opp_colour = if is_black==1 { "white" } else { "black" };
+        if let Some(entry) = self.opening_db.get(&board_hash.to_string()) {
+            println!("Found hash in opening database: {:?}", board_hash);
 
-    //          // Parse the entry to extract values
-    //         if let Value::Object(moves) = entry {
-    //             let mut db_moves = Vec::new();
-    //             let mut scores = Vec::new();
+            // Parse the entry to extract values
+            if let Value::Object(moves) = entry {
+                let mut db_moves = Vec::new();
+                let mut scores = Vec::new();
     
-    //             for (move_str, stats) in moves {
-    //                 if let Value::Object(stats_map) = stats {
-    //                     let win = stats_map.get(curr_colour).and_then(|v| v.as_f64()).unwrap_or(0.0);
-    //                     let lose = stats_map.get(opp_colour).and_then(|v| v.as_f64()).unwrap_or(0.0);
-    //                     let total = stats_map.get("total").and_then(|v| v.as_f64()).unwrap_or(1.0);
-    //                     let draw = total - ( win.abs() + lose.abs() );
+                for (move_str, stats) in moves {
+                    if let Value::Object(stats_map) = stats {
+                        // let win = stats_map.get(curr_colour).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                        // let lose = stats_map.get(opp_colour).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                        let total = stats_map.get("total").and_then(|v| v.as_f64()).unwrap_or(1.0);
+                        // let draw = total - ( win.abs() + lose.abs() );
 
-    //                     let mut score = ( win.abs() + draw.abs()/2.0 ) / total;
-    //                     if score == 0.0 { score += 0.01 };
-    //                     db_moves.push(move_str.clone());
-    //                     scores.push(score);
-    //                 }
-    //             }
+                        // let mut score = ( win.abs() + draw.abs()/2.0 ) / total;
+                        // if score == 0.0 { score += 0.01 }; // Even though bad, maybe good who knows?
+                        db_moves.push(move_str.clone());
+                        scores.push(total);
+                    }
+                }
                 
-    //             if scores.is_empty() {
-    //                 return None;
-    //             }
+                if scores.is_empty() {
+                    return None;
+                }
 
-    //             // Randomly select a move based on weighted scores
-    //             let number_choices = 1;
-    //             let choices = random_choice().random_choice_f64(&db_moves, &scores, number_choices);
-    //             assert!(choices.len() == 1);
+                // Randomly select a move based on weighted scores
+                let number_choices = 1;
+                let choices = random_choice().random_choice_f64(&db_moves, &scores, number_choices);
+                assert!(choices.len() == 1);
 
-    //             for choice in choices {
-    //                 print!("Move selected using DB: {}", choice);
-    //                 let legal_moves = self.board.get_legal_moves();
+                for choice in choices {
+                    println!("Move selected using Opening DB: {}", choice);
+                    let legal_moves = self.board.get_legal_moves();
+                    let selected_move = uci_to_uint( choice );
+                    for next_board in legal_moves {
+                        if next_board.latest_move == selected_move {
+                            return Some( next_board );
+                        }
+                    }
+                }
 
-    //             }
-
-    //             None
-    //         } else {
-    //             println!("No moves found for hash: {:?}", board_hash);
-    //             return None;
-    //         }
-    //     } else {
-    //         println!("Hash not found in the database: {:?}", board_hash);
-    //         return None;
-    //     }
-    // }
+                None
+            } else {
+                println!("No moves found for hash: {:?}", board_hash);
+                return None;
+            }
+        } else {
+            println!("Hash not found in the database: {:?}", board_hash);
+            return None;
+        }
+    }
 
     pub fn random_next_board(&self) -> Option<Board> {
         let legal_moves = self.board.get_legal_moves();

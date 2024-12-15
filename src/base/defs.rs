@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-// use serde_json::Value;
+use std::{collections::HashMap, sync::Arc};
+use serde_json::Value;
 
 pub type BoardHash = u64;
 
@@ -57,16 +57,15 @@ pub struct Board {
 
     // Will not be Hashed
     // [ 1 bit is_pawn_promotion ] [ 2 bits for Q, R, B, N promotion ],
-    // [ 1 bit king-side castle ], [1 bit queen side castle], [ 6 bits for source ],
-    // [ 6 bits for destination ] = 17 bits :(
-    pub latest_move: u32,
+    // [ 6 bits for source ] [ 6 bits for destination ] = 15 bits :D
+    pub latest_move: u16
 }
 
 #[derive(Debug)]
 pub struct Search {
     pub board: Board,
     pub memory: HashMap<BoardHash, f64>,
-    // pub opening_db: &Value,
+    pub opening_db: Arc<Value>,
     pub num_nodes: usize,
     pub max_depth: u32,
     pub num_prunes: u32,

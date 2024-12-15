@@ -1,6 +1,6 @@
 """Allows lichess-bot to send messages to the chat."""
 import logging
-import test_bot.lichess
+from notebooks import lichess as test_lichess
 from lib import model
 from lib.engine_wrapper import EngineWrapper
 from lib import lichess
@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from lib.timer import seconds
 from typing import Union
 MULTIPROCESSING_LIST_TYPE = Sequence[model.Challenge]
-LICHESS_TYPE = Union[lichess.Lichess, test_bot.lichess.Lichess]
+LICHESS_TYPE = Union[lichess.Lichess, test_lichess.Lichess]
 
 logger = logging.getLogger(__name__)
 

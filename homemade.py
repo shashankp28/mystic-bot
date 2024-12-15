@@ -11,6 +11,8 @@ from lib.types import MOVE, HOMEMADE_ARGS_TYPE
 import logging
 import json
 import subprocess
+import time
+from notebooks.lib import boardToBitMap, bitMapFile, extractMove
 
 
 # Use this logger variable to print messages to the console or log files.
@@ -103,108 +105,46 @@ class MysticBot(ExampleEngine):
     This engine demonstrates how one can use `time_limit`, `draw_offered`, and `root_moves`.
     """
 
-    def bitMapFile(self, fileName, bitMap=None, isRead=True):
-        if isRead:
-            with open(fileName, "r+") as f: 
-                bitMap = json.load(f)
-                return bitMap
-        else:
-            assert bitMap is not None, "No bitMap provided  to save!"
-            with open(fileName, "w+") as f: 
-                json.dump(bitMap, f, indent=2)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.executable = "./target/release/mystic-bot"
+        self.writeFile = f"./tmp.json"
+        self.chessBoard = chess.Board()
+        self.timeout = 60 # Not used yet
 
-    def extractMove(self, bitMap):
-        isWhite = ( bitMap[ 'metadata' ] >> 8 ) & 1
-        latestMove = bitMap[ 'latest_move' ]
-        isKingSideCastle = ( latestMove >> 13 ) & 1
-        if isKingSideCastle != 0:
-            return 'e1g1' if not isWhite else 'e8g8'
-        isQueenSideCastle = ( latestMove >> 12 ) & 1
-        if isQueenSideCastle != 0:
-            return 'e1c1' if not isWhite else 'e8c8'
-        source = ( latestMove >> 6 ) & 63
-        destination = latestMove & 63
-        sourceX, sourceY = source%8, source//8
-        destinationX, destinationY = destination%8, destination//8
-
-        sourceLetters = chr(sourceX + ord('a')) + str(sourceY+1)
-        destinationLetters = chr(destinationX + ord('a')) + str(destinationY+1)
-
-        # Check for pawn promotion
-        isPawnPromotion = (latestMove >> 16) & 1
-        promotionPiece = ''
-        if isPawnPromotion:
-            promotionType = (latestMove >> 14) & 3
-            if promotionType == 0:
-                promotionPiece = 'Q'
-            elif promotionType == 1:
-                promotionPiece = 'R'
-            elif promotionType == 2:
-                promotionPiece = 'B'
-            elif promotionType == 3:
-                promotionPiece = 'N'
-            return f"{sourceLetters}{destinationLetters}{promotionPiece}"
-
-        return f"{sourceLetters}{destinationLetters}"
-
-    def boardToBitMap(self, board):
-
-        pieceStructMap = {
-            "r": "rooks",
-            "n": "knights",
-            "b": "bishops",
-            "k": "kings",
-            "q": "queens",
-            "p": "pawns",
-        }
-
-        boardBitMap = {
-            "rooks": 0,
-            "knights": 0,
-            "bishops": 0,
-            "queens": 0,
-            "kings": 0,
-            "pawns": 0,
-            "metadata": 0,
-            "latest_move": 0
-        }
-
-        for index, piece in board.piece_map().items():
-            isBlack = piece.symbol().islower()
-            effIndex = 64*isBlack + ( 63 - index )
-            boardBitMap[ pieceStructMap[ piece.symbol().lower() ] ] |= 1 << effIndex
-
-        metadata = 0
-        metadata |= board.fullmove_number << 16
-        metadata |= board.halfmove_clock << 9
-        metadata |= board.turn << 8
-        en_passant_square = board.ep_square
-        metadata |= bool( en_passant_square ) << 7
-        if en_passant_square:
-            column_number = chess.square_file(en_passant_square)
-            metadata |= column_number << 4
-        metadata |= board.has_kingside_castling_rights(0) << 3
-        metadata |= board.has_queenside_castling_rights(0) << 2
-        metadata |= board.has_kingside_castling_rights(1) << 1
-        metadata |= board.has_queenside_castling_rights(1) << 0
-        boardBitMap[ 'metadata' ] = metadata
-
-        return boardBitMap
-
-    def set_fen_position(self, fen):
-        chessBoard = chess.Board(fen)
-        self.bitMapFile(self.writeFile, self.boardToBitMap(chessBoard), isRead=False)
-        self.chessBoard = chessBoard
-
-    def get_best_move(self):
-        result = subprocess.run(
-            [self.executable, self.writeFile],
-            check=True,
-            capture_output=True,
+        # Run the bot process in the background and wait for 'Mystic Bot Ready' to appear
+        self.bot_process = subprocess.Popen(
+            [self.executable],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True
         )
-        move = self.extractMove(self.bitMapFile(self.writeFile))
-        return move, result
+
+        print( "Waiting for Bot to initialize..." )
+        while True:
+            line = self.bot_process.stdout.readline().strip()
+            if "Mystic Bot Ready" in line:
+                time.sleep( 0.5 )  # Just for safety
+                break
+            print( line )
+        print("Bot initialized successfully!!")
+
+    def set_chess_board(self, board):
+        bitMap = boardToBitMap(board)
+        bitMapFile(self.writeFile, bitMap, isRead=False)
+        self.chessBoard = board
+
+    def get_best_move(self):
+        self.bot_process.stdin.write(f"{self.writeFile}\n")
+        self.bot_process.stdin.flush()
+        output = []
+        while True:
+            line = self.bot_process.stdout.readline().strip()
+            if "New Board Saved Successfully" in line: break
+            output.append( line )
+        move = extractMove( bitMapFile( self.writeFile ) )
+        return move, '\n'.join( output )
 
     def search(self, board: chess.Board, time_limit: Limit, ponder: bool, draw_offered: bool, root_moves: MOVE) -> PlayResult:
         """
@@ -217,13 +157,16 @@ class MysticBot(ExampleEngine):
         :param root_moves: If it is a list, the engine should only play a move that is in `root_moves`.
         :return: The move to play.
         """
-        self.executable = "./target/release/mystic-bot"
-        self.writeFile = f"./tmp.json"
-        self.chessBoard = None
 
-        self.set_fen_position( board.fen() )
+        self.set_chess_board( board )
         move, result = self.get_best_move()
         print(result, move)
         moveObj = chess.Move.from_uci(move)        
 
         return PlayResult(moveObj, None, draw_offered=draw_offered)
+
+    def __del__(self):
+        self.bot_process.stdin.write("exit\n")
+        self.bot_process.stdin.flush()
+        self.bot_process.wait()
+        print("Bot process terminated!!")

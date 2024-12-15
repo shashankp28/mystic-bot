@@ -2,7 +2,7 @@
 import random
 import logging
 import datetime
-import test_bot.lichess
+from notebooks import lichess as test_lichess
 from lib import model
 from lib.timer import Timer, seconds, minutes, days, years
 from collections import defaultdict
@@ -13,7 +13,7 @@ from typing import Optional, Union
 from lib.types import UserProfileType, PerfType, EventType, FilterType
 MULTIPROCESSING_LIST_TYPE = Sequence[model.Challenge]
 DAILY_TIMERS_TYPE = list[Timer]
-LICHESS_TYPE = Union[lichess.Lichess, test_bot.lichess.Lichess]
+LICHESS_TYPE = Union[lichess.Lichess, test_lichess.Lichess]
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,8 @@ def read_daily_challenges() -> DAILY_TIMERS_TYPE:
     try:
         with open(daily_challenges_file_name) as file:
             for line in file:
-                timers.append(Timer(days(1), datetime.datetime.strptime(line, timestamp_format)))
+                timers.append(
+                    Timer(days(1), datetime.datetime.strptime(line, timestamp_format)))
     except FileNotFoundError:
         pass
 
@@ -47,16 +48,21 @@ class Matchmaking:
     def __init__(self, li: LICHESS_TYPE, config: Configuration, user_profile: UserProfileType) -> None:
         """Initialize values needed for matchmaking."""
         self.li = li
-        self.variants = list(filter(lambda variant: variant != "fromPosition", config.challenge.variants))
+        self.variants = list(
+            filter(lambda variant: variant != "fromPosition", config.challenge.variants))
         self.matchmaking_cfg = config.matchmaking
         self.user_profile = user_profile
-        self.last_challenge_created_delay = Timer(seconds(25))  # Challenges expire after 20 seconds.
-        self.last_game_ended_delay = Timer(minutes(self.matchmaking_cfg.challenge_timeout))
+        # Challenges expire after 20 seconds.
+        self.last_challenge_created_delay = Timer(seconds(25))
+        self.last_game_ended_delay = Timer(
+            minutes(self.matchmaking_cfg.challenge_timeout))
         self.last_user_profile_update_time = Timer(minutes(5))
-        self.min_wait_time = seconds(60)  # Wait before new challenge to avoid api rate limits.
+        # Wait before new challenge to avoid api rate limits.
+        self.min_wait_time = seconds(60)
 
         # Maximum time between challenges, even if there are active games
-        self.max_wait_time = minutes(10) if self.matchmaking_cfg.allow_during_games else years(10)
+        self.max_wait_time = minutes(
+            10) if self.matchmaking_cfg.allow_during_games else years(10)
         self.challenge_id = ""
         self.daily_challenges = read_daily_challenges()
 
@@ -66,7 +72,8 @@ class Matchmaking:
         #   - variant (standard, horde, etc.)
         #   - casual/rated
         #   - empty string (if no other reason is given or self.filter_type is COARSE)
-        self.challenge_type_acceptable: defaultdict[tuple[str, str], bool] = defaultdict(lambda: True)
+        self.challenge_type_acceptable: defaultdict[tuple[str, str], bool] = defaultdict(
+            lambda: True)
         self.challenge_filter = self.matchmaking_cfg.challenge_filter
 
         for name in self.matchmaking_cfg.block_list:
@@ -88,7 +95,8 @@ class Matchmaking:
     def create_challenge(self, username: str, base_time: int, increment: int, days: int, variant: str,
                          mode: str) -> str:
         """Create a challenge."""
-        params: dict[str, Union[str, int, bool]] = {"rated": mode == "rated", "variant": variant}
+        params: dict[str, Union[str, int, bool]] = {
+            "rated": mode == "rated", "variant": variant}
 
         if days:
             params["days"] = days
@@ -126,9 +134,11 @@ class Matchmaking:
         100 - 149 challenges --> 3 minutes
         etc.
         """
-        self.daily_challenges = [timer for timer in self.daily_challenges if not timer.is_expired()]
+        self.daily_challenges = [
+            timer for timer in self.daily_challenges if not timer.is_expired()]
         self.daily_challenges.append(Timer(days(1)))
-        self.min_wait_time = seconds(60) * ((len(self.daily_challenges) // 50) + 1)
+        self.min_wait_time = seconds(
+            60) * ((len(self.daily_challenges) // 50) + 1)
         write_daily_challenges(self.daily_challenges)
 
     def perf(self) -> dict[str, PerfType]:
@@ -160,11 +170,13 @@ class Matchmaking:
 
         if rating_preference == "high":
             # A bot with max_rating rating will be twice as likely to get picked than a bot with min_rating rating.
-            reduce_ratings_by = min(min_rating - (max_rating - min_rating), min_rating - 1)
+            reduce_ratings_by = min(
+                min_rating - (max_rating - min_rating), min_rating - 1)
             weights = [rating(bot) - reduce_ratings_by for bot in online_bots]
         elif rating_preference == "low":
             # A bot with min_rating rating will be twice as likely to get picked than a bot with max_rating rating.
-            reduce_ratings_by = max(max_rating - (min_rating - max_rating), max_rating + 1)
+            reduce_ratings_by = max(
+                max_rating - (min_rating - max_rating), max_rating + 1)
             weights = [reduce_ratings_by - rating(bot) for bot in online_bots]
         else:
             weights = [1] * len(online_bots)
@@ -172,13 +184,18 @@ class Matchmaking:
 
     def choose_opponent(self) -> tuple[Optional[str], int, int, int, str, str]:
         """Choose an opponent."""
-        override_choice = random.choice(self.matchmaking_cfg.overrides.keys() + [None])
-        logger.info(f"Using the {override_choice or 'default'} matchmaking configuration.")
-        override = {} if override_choice is None else self.matchmaking_cfg.overrides.lookup(override_choice)
+        override_choice = random.choice(
+            self.matchmaking_cfg.overrides.keys() + [None])
+        logger.info(
+            f"Using the {override_choice or 'default'} matchmaking configuration.")
+        override = {} if override_choice is None else self.matchmaking_cfg.overrides.lookup(
+            override_choice)
         match_config = self.matchmaking_cfg | override
 
-        variant = self.get_random_config_value(match_config, "challenge_variant", self.variants)
-        mode = self.get_random_config_value(match_config, "challenge_mode", ["casual", "rated"])
+        variant = self.get_random_config_value(
+            match_config, "challenge_variant", self.variants)
+        mode = self.get_random_config_value(
+            match_config, "challenge_mode", ["casual", "rated"])
         rating_preference = match_config.rating_preference
 
         base_time = random.choice(match_config.challenge_initial_time)
@@ -201,7 +218,8 @@ class Matchmaking:
         if rating_diff is not None and bot_rating > 0:
             min_rating = bot_rating - rating_diff
             max_rating = bot_rating + rating_diff
-        logger.info(f"Seeking {game_type} game with opponent rating in [{min_rating}, {max_rating}] ...")
+        logger.info(
+            f"Seeking {game_type} game with opponent rating in [{min_rating}, {max_rating}] ...")
         allow_tos_violation = match_config.opponent_allow_tos_violation
 
         def is_suitable_opponent(bot: UserProfileType) -> bool:
@@ -209,7 +227,8 @@ class Matchmaking:
             return (bot["username"] != self.username()
                     and not self.in_block_list(bot["username"])
                     and not bot.get("disabled")
-                    and (allow_tos_violation or not bot.get("tosViolation"))  # Terms of Service violation.
+                    # Terms of Service violation.
+                    and (allow_tos_violation or not bot.get("tosViolation"))
                     and perf.get("games", 0) > 0
                     and min_rating <= perf.get("rating", 0) <= max_rating)
 
@@ -217,13 +236,15 @@ class Matchmaking:
         online_bots = list(filter(is_suitable_opponent, online_bots))
 
         def ready_for_challenge(bot: UserProfileType) -> bool:
-            aspects = [variant, game_type, mode] if self.challenge_filter == FilterType.FINE else []
+            aspects = [variant, game_type,
+                       mode] if self.challenge_filter == FilterType.FINE else []
             return all(self.should_accept_challenge(bot["username"], aspect) for aspect in aspects)
 
         ready_bots = list(filter(ready_for_challenge, online_bots))
         online_bots = ready_bots or online_bots
         bot_username = None
-        weights = self.get_weights(online_bots, rating_preference, min_rating, max_rating, game_type)
+        weights = self.get_weights(
+            online_bots, rating_preference, min_rating, max_rating, game_type)
 
         try:
             bot = random.choices(online_bots, weights=weights)[0]
@@ -253,7 +274,8 @@ class Matchmaking:
         :param challenge_queue: The queue containing the challenges.
         :param max_games: The maximum allowed number of simultaneous games.
         """
-        max_games_for_matchmaking = max_games if self.matchmaking_cfg.allow_during_games else min(1, max_games)
+        max_games_for_matchmaking = max_games if self.matchmaking_cfg.allow_during_games else min(
+            1, max_games)
         game_count = len(active_games) + len(challenge_queue)
         if (game_count >= max_games_for_matchmaking
                 or (game_count > 0 and self.last_challenge_created_delay.time_since_reset() < self.max_wait_time)
@@ -264,8 +286,10 @@ class Matchmaking:
         self.update_user_profile()
         bot_username, base_time, increment, days, variant, mode = self.choose_opponent()
         logger.info(f"Will challenge {bot_username} for a {variant} game.")
-        challenge_id = self.create_challenge(bot_username, base_time, increment, days, variant, mode) if bot_username else ""
-        logger.info(f"Challenge id is {challenge_id if challenge_id else 'None'}.")
+        challenge_id = self.create_challenge(
+            bot_username, base_time, increment, days, variant, mode) if bot_username else ""
+        logger.info(
+            f"Challenge id is {challenge_id if challenge_id else 'None'}.")
         self.challenge_id = challenge_id
 
     def discard_challenge(self, challenge_id: str) -> None:
@@ -286,10 +310,12 @@ class Matchmaking:
         """Show the earliest that the next challenge will be created."""
         if self.matchmaking_cfg.allow_matchmaking:
             postgame_timeout = self.last_game_ended_delay.time_until_expiration()
-            time_to_next_challenge = self.min_wait_time - self.last_challenge_created_delay.time_since_reset()
+            time_to_next_challenge = self.min_wait_time - \
+                self.last_challenge_created_delay.time_since_reset()
             time_left = max(postgame_timeout, time_to_next_challenge)
             earliest_challenge_time = datetime.datetime.now() + time_left
-            challenges = "challenge" + ("" if len(self.daily_challenges) == 1 else "s")
+            challenges = "challenge" + \
+                ("" if len(self.daily_challenges) == 1 else "s")
             logger.info(f"Next challenge will be created after {earliest_challenge_time.strftime('%X')} "
                         f"({len(self.daily_challenges)} {challenges} in last 24 hours)")
 
@@ -359,9 +385,11 @@ class Matchmaking:
         reason_key = event["challenge"]["declineReasonKey"].lower()
         if reason_key not in decline_details:
             logger.warning(f"Unknown decline reason received: {reason_key}")
-        game_problem = decline_details.get(reason_key, "") if self.challenge_filter == FilterType.FINE else ""
+        game_problem = decline_details.get(
+            reason_key, "") if self.challenge_filter == FilterType.FINE else ""
         self.add_challenge_filter(opponent.name, game_problem)
-        logger.info(f"Will not challenge {opponent} to another {game_problem}".strip() + " game.")
+        logger.info(
+            f"Will not challenge {opponent} to another {game_problem}".strip() + " game.")
 
         self.show_earliest_challenge_time()
 

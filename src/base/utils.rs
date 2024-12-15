@@ -324,6 +324,28 @@ impl Board {
     }
 }
 
+pub fn uci_to_uint(uci: &str) -> u16 {
+    let mut result: u16 = 0;
+
+    result |= ((uci.chars().nth(1).unwrap().to_digit(10).unwrap() as u16) - 1) << 9;
+    result |= ((uci.chars().nth(0).unwrap() as u16) - ('a' as u16)) << 6;
+    result |= ((uci.chars().nth(3).unwrap().to_digit(10).unwrap() as u16) - 1) << 3;
+    result |= (uci.chars().nth(2).unwrap() as u16) - ('a' as u16);
+    result &= (1 << 12) - 1;
+
+    // Handle promotion piece if present (uci[4])
+    if uci.len() == 5 {
+        match uci.chars().nth(4).unwrap() {
+            'Q' => result |= 4 << 12, // Queen promotion
+            'R' => result |= 5 << 12, // Rook promotion
+            'B' => result |= 6 << 12, // Bishop promotion
+            'N' => result |= 7 << 12, // Knight promotion
+            _ => {}
+        }
+    }
+    result
+}
+
 impl PieceColour {
     pub fn from_u8(is_black: u8) -> Self {
         match is_black {
@@ -334,6 +356,41 @@ impl PieceColour {
     }
 }
 
+impl LegalMoveVec {
+    pub fn new() -> Self {
+        LegalMoveVec { data: Vec::new() }
+    }
+
+    pub fn push(&mut self, board: &mut Board) {
+        if board.is_legal() {
+            self.data.push(*board);
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    pub fn choose(&self, index: usize) -> Option<&Board> {
+        self.data.get(index)
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<Board> {
+        self.data.iter()
+    }
+}
+
+impl Iterator for LegalMoveVec {
+    type Item = Board;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if !self.data.is_empty() {
+            Some(self.data.remove(0))
+        } else {
+            None
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -376,42 +433,6 @@ mod tests {
             }
         } else {
             println!("Failed to load the board, exiting.");
-        }
-    }
-}
-
-impl LegalMoveVec {
-    pub fn new() -> Self {
-        LegalMoveVec { data: Vec::new() }
-    }
-
-    pub fn push(&mut self, board: &mut Board) {
-        if board.is_legal() {
-            self.data.push(*board);
-        }
-    }
-
-    pub fn len(&self) -> usize {
-        self.data.len()
-    }
-
-    pub fn choose(&self, index: usize) -> Option<&Board> {
-        self.data.get(index)
-    }
-
-    pub fn iter(&self) -> std::slice::Iter<Board> {
-        self.data.iter()
-    }
-}
-
-impl Iterator for LegalMoveVec {
-    type Item = Board;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if !self.data.is_empty() {
-            Some(self.data.remove(0))
-        } else {
-            None
         }
     }
 }

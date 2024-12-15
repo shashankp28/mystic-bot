@@ -23,7 +23,7 @@ import itertools
 import glob
 import platform
 import importlib.metadata
-import test_bot.lichess
+from notebooks import lichess as test_lichess
 from lib.config import load_config, Configuration
 from lib.conversation import Conversation, ChatLine
 from lib.timer import Timer, seconds, msec, hours, to_seconds
@@ -39,7 +39,7 @@ from multiprocessing.pool import Pool
 from typing import Optional, Union, TypedDict, cast
 from types import FrameType
 MULTIPROCESSING_LIST_TYPE = MutableSequence[model.Challenge]
-LICHESS_TYPE = Union[lichess.Lichess, test_bot.lichess.Lichess]
+LICHESS_TYPE = Union[lichess.Lichess, test_lichess.Lichess]
 POOL_TYPE = Pool
 
 

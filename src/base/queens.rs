@@ -72,7 +72,7 @@ impl Board {
                     // Update Tickers
                     new_board.update_tickers( piece_removed, is_black==1 );
                     new_board.set_enpassant( None );
-                    new_board.latest_move = ( (index as u32) << 6 | new_index as u32) as u32;
+                    new_board.latest_move = ( (index as u16) << 6 | new_index as u16) as u16;
                     new_board.latest_move &= ( 1 << 12 ) - 1;
                     legal_boards.push(&mut new_board);
                     // Break if we had reached an opposite coloured piece

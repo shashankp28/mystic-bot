@@ -153,15 +153,8 @@ def display_board(board, size=800):
 
 
 def extractMove(bitMap):
-   isWhite = (bitMap['metadata'] >> 8) & 1
    latestMove = bitMap['latest_move']
-   isKingSideCastle = (latestMove >> 13) & 1
 
-   if isKingSideCastle != 0:
-      return 'e1g1' if not isWhite else 'e8g8'
-   isQueenSideCastle = ( latestMove >> 12 ) & 1
-   if isQueenSideCastle != 0:
-      return 'e1c1' if not isWhite else 'e8c8'
    source = (latestMove >> 6) & 63
    destination = latestMove & 63
    sourceX, sourceY = source % 8, source//8
@@ -171,10 +164,10 @@ def extractMove(bitMap):
    destinationLetters = chr(destinationX + ord('a')) + str(destinationY+1)
 
    # Check for pawn promotion
-   isPawnPromotion = (latestMove >> 16) & 1
+   isPawnPromotion = (latestMove >> 14) & 1
    promotionPiece = ''
    if isPawnPromotion:
-      promotionType = (latestMove >> 14) & 3
+      promotionType = (latestMove >> 12) & 3
       if promotionType == 0:
          promotionPiece = 'Q'
       elif promotionType == 1:
