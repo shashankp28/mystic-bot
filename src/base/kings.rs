@@ -109,10 +109,10 @@ impl Board {
                     } else {
                         new_board.latest_move |= 3902;  // UCI e8g8 -> 8e8g 111-100 111-110
                     }
+                    new_board.latest_move &= ( 1 << 12 ) - 1;
                     legal_boards.push(&mut new_board);
                 }
             }
-
         }
 
         // Queen side castling
@@ -152,6 +152,7 @@ impl Board {
                     } else {
                         new_board.latest_move |= 3898;  // UCI e8c8 -> 8e8c 111-100 111-010
                     }
+                    new_board.latest_move &= ( 1 << 12 ) - 1;
                     legal_boards.push(&mut new_board);
                 }
             }

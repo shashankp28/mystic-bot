@@ -138,7 +138,7 @@ fn main() {
                     memory,
                     opening_db: Arc::clone(&opening_db),
                     num_nodes: 0,
-                    max_depth: 5,
+                    max_depth: 3,
                     num_prunes: 0,
                 };
 
