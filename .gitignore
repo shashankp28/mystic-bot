@@ -187,3 +187,4 @@ tmp.json
 stockfish-windows-x86-64.exe
 db/
 openings.json
+tmp/

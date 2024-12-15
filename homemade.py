@@ -13,6 +13,7 @@ import json
 import subprocess
 import time
 from notebooks.lib import boardToBitMap, bitMapFile, extractMove
+import os
 
 
 # Use this logger variable to print messages to the console or log files.
@@ -106,9 +107,12 @@ class MysticBot(ExampleEngine):
     """
 
     def __init__(self, *args, **kwargs):
+        directory_path = "./tmp"
+        fileName = random.randint( 1000000, 9999999 )
+        os.makedirs(directory_path, exist_ok=True)
         super().__init__(*args, **kwargs)
         self.executable = "./target/release/mystic-bot"
-        self.writeFile = f"./tmp.json"
+        self.writePath = f"{directory_path}/{fileName}.json"
         self.chessBoard = chess.Board()
         self.timeout = 60 # Not used yet
 
@@ -132,18 +136,18 @@ class MysticBot(ExampleEngine):
 
     def set_chess_board(self, board):
         bitMap = boardToBitMap(board)
-        bitMapFile(self.writeFile, bitMap, isRead=False)
+        bitMapFile(self.writePath, bitMap, isRead=False)
         self.chessBoard = board
 
     def get_best_move(self):
-        self.bot_process.stdin.write(f"{self.writeFile}\n")
+        self.bot_process.stdin.write(f"{self.writePath}\n")
         self.bot_process.stdin.flush()
         output = []
         while True:
             line = self.bot_process.stdout.readline().strip()
             if "New Board Saved Successfully" in line: break
             output.append( line )
-        move = extractMove( bitMapFile( self.writeFile ) )
+        move = extractMove( bitMapFile( self.writePath ) )
         return move, '\n'.join( output )
 
     def search(self, board: chess.Board, time_limit: Limit, ponder: bool, draw_offered: bool, root_moves: MOVE) -> PlayResult:
