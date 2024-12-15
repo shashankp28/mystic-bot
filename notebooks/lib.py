@@ -169,13 +169,13 @@ def extractMove(bitMap):
    if isPawnPromotion:
       promotionType = (latestMove >> 12) & 3
       if promotionType == 0:
-         promotionPiece = 'Q'
+         promotionPiece = 'q'
       elif promotionType == 1:
-         promotionPiece = 'R'
+         promotionPiece = 'r'
       elif promotionType == 2:
-         promotionPiece = 'B'
+         promotionPiece = 'b'
       elif promotionType == 3:
-         promotionPiece = 'N'
+         promotionPiece = 'n'
       return f"{sourceLetters}{destinationLetters}{promotionPiece}"
 
    return f"{sourceLetters}{destinationLetters}"

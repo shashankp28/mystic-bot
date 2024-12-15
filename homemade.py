@@ -125,14 +125,14 @@ class MysticBot(ExampleEngine):
             text=True
         )
 
-        print( "Waiting for Bot to initialize..." )
+        logger.info( "Waiting for Bot to initialize..." )
         while True:
             line = self.bot_process.stdout.readline().strip()
             if "Mystic Bot Ready" in line:
                 time.sleep( 0.5 )  # Just for safety
                 break
             print( line )
-        print("Bot initialized successfully!!")
+        logger.info("Bot initialized successfully!!")
 
     def set_chess_board(self, board):
         bitMap = boardToBitMap(board)
@@ -164,7 +164,8 @@ class MysticBot(ExampleEngine):
 
         self.set_chess_board( board )
         move, result = self.get_best_move()
-        print(result, move)
+        logger.info( result+"\n" )
+        logger.info(f"The move played by bot: {move}")
         moveObj = chess.Move.from_uci(move)        
 
         return PlayResult(moveObj, None, draw_offered=draw_offered)
@@ -173,4 +174,4 @@ class MysticBot(ExampleEngine):
         self.bot_process.stdin.write("exit\n")
         self.bot_process.stdin.flush()
         self.bot_process.wait()
-        print("Bot process terminated!!")
+        logger.info("Bot process terminated!!")
