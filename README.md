@@ -1,5 +1,29 @@
 # Mystic Chess Bot
 
+<p align="center">
+ <img style="border-radius: 50%" width="250px" src="./sample/logo.jpg" align="center" alt="Mystic bot" />
+</p>
+  <p align="center">
+    <a href="https://github.com/shashankp28/mystic-bot/actions">
+      <img alt="Tests Passing" src="https://github.com/shashankp28/mystic-bot/actions/workflows/rust.yml/badge.svg" />
+    </a>
+    <a href="https://github.com/shashankp28/mystic-bot/graphs/contributors">
+      <img alt="GitHub Contributors" src="https://img.shields.io/github/contributors/shashankp28/mystic-bot" />
+    </a>
+    <a href="https://github.com/shashankp28/mystic-bot/issues">
+      <img alt="Issues" src="https://img.shields.io/github/issues/shashankp28/mystic-bot?color=0088ff" />
+    </a>
+    <a href="https://github.com/shashankp28/mystic-bot/pulls">
+      <img alt="GitHub pull requests" src="https://img.shields.io/github/issues-pr/shashankp28/mystic-bot?color=0088ff" />
+    </a>
+    <a href="https://securityscorecards.dev/viewer/?uri=github.com/shashankp28/mystic-bot">
+      <img alt="OpenSSF Scorecard" src="https://api.securityscorecards.dev/projects/github.com/shashankp28/mystic-bot/badge" />
+    </a>
+    <br />
+    <br />
+  </p>
+</p>
+
 A **simple yet powerful Chess Bot** written in **Rust**, designed for efficiency and scalability.
 
 The bot currently has an account on **Lichess**: [MysticBot](https://lichess.org/@/MysticBot).  
