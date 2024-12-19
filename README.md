@@ -1,20 +1,67 @@
 # Mystic Chess Bot
 
-A simple Chess Bot using Rust
+A **simple yet powerful Chess Bot** written in **Rust**, designed for efficiency and scalability.
 
-To clone the repository run:
-```bash
-git clone https://github.com/shashankp28/mystic-bot.git
-```
+The bot currently has an account on **Lichess**: [MysticBot](https://lichess.org/@/MysticBot).  
+> ⚠️ Note: The bot is **not running constantly** due to budget constraints.
+## Getting Started
+0. **Clone the Repository**  
+   Start by cloning the repository to your local system:  
+   ```bash  
+   git clone https://github.com/shashankp28/mystic-bot.git  
+   ```
 
-## Bot Algorithm
+1. **Install Python Dependencies**  
+   Ensure you have Python installed, then install the required dependencies:  
+   ```bash  
+   pip install -r requirements.txt  
+   ```
 
-### Bit-Board Representation
+2. **Build the Bot Using Cargo**  
+   Use **cargo** to build the bot for optimized performance:  
+   ```bash  
+   cd mystic-bot  
+   cargo build --release  
+   ```
+
+3. **Run the Bot Independently**  
+   After building, you can run the bot directly:  
+   ```bash  
+   cargo run  # or  
+   ./target/release/mystic-bot  
+   ```  
+   ![Bot Running Example](./sample/bot.png)
+
+4. **Play Locally Using Jupyter Notebook**  
+   If you prefer to play with the bot locally, use the Jupyter Notebook provided in `notebooks/botBattle.ipynb`.  
+   The notebook is **self-explanatory** and offers an interactive way to play against the bot.
+
+5. **Configure Lichess API Key**  
+   To connect the bot to your Lichess account:  
+   - Open the `config.yml.default` file.  
+   - Replace the placeholder `xxxxxxxxxxxxxxxxxxxxxx` with your Lichess API key:  
+     ```yml  
+     token: "your_lichess_api_key"  
+     ```  
+   - Rename the file to `config.yml`:  
+     ```bash  
+     mv config.yml.default config.yml  
+     ```  
+   - Run the bot using the following command:  
+     ```bash  
+     python lichess-bot.py -u  
+     ```
+
+Follow these steps to set up and enjoy playing with **Mystic Chess Bot**! ♟️✨
+
+## Bot Overview
+
+### 0. Bit-Board Representation
+The bot uses a bit-board representation for storing the chessboard state, making computations efficient and fast. Below is a brief overview of the `Board` struct:
 
 ```rust
-#[derive( Copy, Clone, Debug, Serialize, Deserialize )]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Board {
-
     // Flattended Matrix representation of 8x8 Chess Board, with `a1` at the Top-Left
     // Bit is 1 if the corresponding piece is at corresponding index else 0
     // The black and white parts of the boards are concatenated in 64+64 = 128 bits
@@ -34,90 +81,57 @@ pub struct Board {
     //   [ 3 bits en_passant_column  ], Black o-o, Black o-o-o, White o-o, White o-o-o )
     //   --> 16 + fullmove_number / 32 bits used
     pub metadata: u32,
+
+    // Will not be Hashed
+    // [ 1 bit is_pawn_promotion ] [ 2 bits for Q, R, B, N promotion ],
+    // [ 6 bits for source ] [ 6 bits for destination ] = 15 bits :D
+    pub latest_move: u16
 }
 ```
+This representation is inspired by this [video](https://www.youtube.com/watch?v=w4FFX_otR-4&pp=ygUSbWFraW5nIGEgY2hlc3MgYm90).
 
-## Display Chess Board
+### 1. Opening Database
+- The bot uses an opening database containing **1.1 million+** chess positions.
+- For the first few moves, the bot looks up this database to instantly play the best-known responses.
+- This enables quick and accurate moves in the opening phase, saving computation time for later stages of the game.
 
-This project allows you to generate a chessboard image with pieces displayed on it. The pieces and the board are represented as images stored in a specified directory. You can customize the arrangement of the pieces by modifying the board configuration.
+### 2. Search Algorithm
+The bot implements a search algorithm using a combination of:
 
-### Features
+- **Alpha-beta pruning**: Prunes unnecessary branches in the search tree.
+- **Principal Variation Search (PVS)**: Optimizes the exploration of the search tree's principal variation.
 
-- Customizable chessboard layout.
-- Generates a PNG image of the chessboard with pieces.
-- Uses the Pillow library for image processing.
+Key features:
 
-### Requirements
+- Evaluates **300,000+** positions per second on average.
+- Dynamically adjusts search depth:
+  - **Midgames**: Searches to a depth of **5–6 moves**.
+  - **Endgames**: Increases search depth to **9–10 moves**.
+- **Think time**: **5 seconds per move** outside of the opening database.
 
-You can install the required library using pip:
+### 3. Heuristics
+The evaluation function combines:
+- **Static piece values**: Assigns scores to pieces (e.g., Pawns, Knights, Bishops, etc.).
+- **Positional values**: Evaluates the strategic placement of pieces on the board.
 
-```bash
-pip install -r requirements.txt
-```
+For reference, the scoring is inspired by this [website](https://www.chessprogramming.org/Piece-Square_Tables).
 
-### Usage
+***⚠️ Currently, the bot does not use neural networks and hence does not learn from games. Future work may include integrating a learning-based system to enhance performance.***
 
-Using the `analysis.ipynb` is straight-forward
+### 4. Future Enhancements
 
+- **Neural Network Integration**: To enable adaptive learning and improve decision-making
+- **Endgame Tablebases**: For perfect endgame play
+- **Cross-Platform Support**: Ensuring compatibility across Windows, Linux, and macOS
 
-<div align="center">
+## Contact
 
-  ![lichess-bot](https://github.com/lichess-bot-devs/lichess-bot-images/blob/main/lichess-bot-icon-400.png)
-
-  <h1>lichess-bot</h1>
-
-  A bridge between [lichess.org](https://lichess.org) and bots.
-  <br>
-  <strong>[Explore lichess-bot docs »](https://github.com/lichess-bot-devs/lichess-bot/wiki)</strong>
-  <br>
-  <br>
-  [![Python Build](https://github.com/lichess-bot-devs/lichess-bot/actions/workflows/python-build.yml/badge.svg)](https://github.com/lichess-bot-devs/lichess-bot/actions/workflows/python-build.yml)
-  [![Python Test](https://github.com/lichess-bot-devs/lichess-bot/actions/workflows/python-test.yml/badge.svg)](https://github.com/lichess-bot-devs/lichess-bot/actions/workflows/python-test.yml)
-  [![Mypy](https://github.com/lichess-bot-devs/lichess-bot/actions/workflows/mypy.yml/badge.svg)](https://github.com/lichess-bot-devs/lichess-bot/actions/workflows/mypy.yml)
-
-</div>
-
-## Overview
-
-[lichess-bot](https://github.com/lichess-bot-devs/lichess-bot) is a free bridge
-between the [Lichess Bot API](https://lichess.org/api#tag/Bot) and chess engines.
-
-With lichess-bot, you can create and operate a bot on lichess. Your bot will be able to play against humans and bots alike, and you will be able to view these games live on lichess.
-
-See also the lichess-bot [documentation](https://github.com/lichess-bot-devs/lichess-bot/wiki) for further usage help.
-
-## Features
-Supports:
-- Every variant and time control
-- UCI, XBoard, and Homemade engines
-- Matchmaking (challenging other bots)
-- Offering Draws and Resigning
-- Accepting move takeback requests from opponents
-- Saving games as PGN
-- Local & Online Opening Books
-- Local & Online Endgame Tablebases
-
-Can run on:
-- Python 3.9 and later
-- Windows, Linux and MacOS
-- Docker
-
-## Steps
-1. [Install lichess-bot](https://github.com/lichess-bot-devs/lichess-bot/wiki/How-to-Install)
-2. [Create a lichess OAuth token](https://github.com/lichess-bot-devs/lichess-bot/wiki/How-to-create-a-Lichess-OAuth-token)
-3. [Upgrade to a BOT account](https://github.com/lichess-bot-devs/lichess-bot/wiki/Upgrade-to-a-BOT-account)
-4. [Setup the engine](https://github.com/lichess-bot-devs/lichess-bot/wiki/Setup-the-engine)
-5. [Configure lichess-bot](https://github.com/lichess-bot-devs/lichess-bot/wiki/Configure-lichess-bot)
-6. [Run lichess-bot](https://github.com/lichess-bot-devs/lichess-bot/wiki/How-to-Run-lichess%E2%80%90bot)
-
-## Advanced options
-- [Create a homemade engine](https://github.com/lichess-bot-devs/lichess-bot/wiki/Create-a-homemade-engine)
-- [Add extra customizations](https://github.com/lichess-bot-devs/lichess-bot/wiki/Extra-customizations)
-
-<br />
-
-## Acknowledgements
-Thanks to the Lichess team, especially T. Alexander Lystad and Thibault Duplessis for working with the LeelaChessZero team to get this API up. Thanks to the [Niklas Fiekas](https://github.com/niklasf) and his [python-chess](https://github.com/niklasf/python-chess) code which allows engine communication seamlessly.
+For any inquiries or support, feel free to reach out to me at: **shashankp2832@gmail.com**  
 
 ## License
-lichess-bot is licensed under the AGPLv3 (or any later version at your option). Check out the [LICENSE file](https://github.com/lichess-bot-devs/lichess-bot/blob/master/LICENSE) for the full text.
+
+**Mystic Bot** is licensed under the **MIT License**.  
+You can check out the full text of the MIT License in the [LICENSE file](https://github.com/shashankp28/mystic-bot/blob/main/LICENSE).  
+
+Additionally, this project may include code from [Lichess Bot](https://github.com/lichess-bot-devs/lichess-bot), which is also licensed under the AGPLv3.  
+Please refer to the [Lichess Bot LICENSE](https://github.com/lichess-bot-devs/lichess-bot/blob/master/LICENSE) for more information.
