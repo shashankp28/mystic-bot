@@ -53,14 +53,16 @@ The bot currently has an account on **Lichess**: [MysticBot](https://lichess.org
    ```bash  
    cargo run  # or  
    ./target/release/mystic-bot  
-   ```  
+   ```
    ![Bot Running Example](./sample/bot.png)
+   
+   Sample *json* files are give in the `sample/` directory
 
-4. **Play Locally Using Jupyter Notebook**  
+5. **Play Locally Using Jupyter Notebook**  
    If you prefer to play with the bot locally, use the Jupyter Notebook provided in `notebooks/botBattle.ipynb`.  
    The notebook is **self-explanatory** and offers an interactive way to play against the bot.
 
-5. **Configure Lichess API Key**  
+6. **Configure Lichess API Key**  
    To connect the bot to your Lichess account:  
    - Open the `config.yml.default` file.  
    - Replace the placeholder `xxxxxxxxxxxxxxxxxxxxxx` with your Lichess API key:  
