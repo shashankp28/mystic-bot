@@ -105,9 +105,9 @@ impl Board {
                     new_board.remove_castling_bits(CastleSide::King, &curr_colour);
                     new_board.remove_castling_bits(CastleSide::Queen, &curr_colour);
                     if is_black == 0 {
-                        new_board.latest_move |= 782;  // UCI e1g1 -> 1e1g 001-100 001-110
+                        new_board.latest_move |= 262;  // UCI e1g1 -> 0e0g 000-100 000-110
                     } else {
-                        new_board.latest_move |= 3902;  // UCI e8g8 -> 8e8g 111-100 111-110
+                        new_board.latest_move |= 3902;  // UCI e8g8 -> 7e7g 111-100 111-110
                     }
                     new_board.latest_move &= ( 1 << 12 ) - 1;
                     legal_boards.push(&mut new_board);
@@ -148,9 +148,9 @@ impl Board {
                     new_board.remove_castling_bits(CastleSide::King, &curr_colour);
                     new_board.remove_castling_bits(CastleSide::Queen, &curr_colour);
                     if is_black == 0 {
-                        new_board.latest_move |= 778;  // UCI e1c1 -> 1e1c 001-100 001-010
+                        new_board.latest_move |= 258;  // UCI e1c1 -> 0e0c 000-100 000-010
                     } else {
-                        new_board.latest_move |= 3898;  // UCI e8c8 -> 8e8c 111-100 111-010
+                        new_board.latest_move |= 3898;  // UCI e8c8 -> 7e7c 111-100 111-010
                     }
                     new_board.latest_move &= ( 1 << 12 ) - 1;
                     legal_boards.push(&mut new_board);
