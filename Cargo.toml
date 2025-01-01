@@ -19,3 +19,4 @@ reqwest = { version = "*", features = ["blocking"] }
 flate2 = "*"
 tar = "*"
 random_choice = "*"
+fen = "*"

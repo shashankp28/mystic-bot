@@ -1,4 +1,5 @@
 use crate::base::defs::{Board, CastleSide, PieceColour, LegalMoveVec};
+use fen::{Color, PieceKind};
 use serde_json::to_writer_pretty;
 use std::fs::File;
 use std::hash::DefaultHasher;
@@ -319,6 +320,60 @@ impl Board {
             }
             Err(e) => {
                 println!("Error serializing board: {}", e);
+            }
+        }
+    }
+
+    pub fn from_fen( fen_string: &String ) -> Option<Board> {
+        let result = fen::BoardState::from_fen( fen_string );
+        match result {
+            Ok( fen_board ) => {
+                let mut board = Board {
+                    rooks: 0,
+                    knights: 0,
+                    bishops: 0,
+                    queens: 0,
+                    kings: 0,
+                    pawns: 0,
+                    metadata: 0,
+                    latest_move: 0,
+                };
+                for index in 0..64 {
+                    if let Some( piece ) = fen_board.pieces.get( index ).unwrap() {
+                        let piece_black = if piece.color == Color::Black {1} else {0};
+                        let offset = (63 - index) + piece_black*63;
+                        match piece.kind {
+                            PieceKind::King => { board.kings |= 1 << offset }
+                            PieceKind::Queen => { board.queens |= 1 << offset }
+                            PieceKind::Rook => { board.rooks |= 1 << offset }
+                            PieceKind::Knight => { board.knights |= 1 << offset }
+                            PieceKind::Bishop => { board.bishops |= 1 << offset }
+                            PieceKind::Pawn => { board.pawns |= 1 << offset }
+                        }
+                    }
+                }
+                let is_white_move = if fen_board.side_to_play == Color::White {1} else {0};
+                let white_ooo= if fen_board.white_can_ooo {1} else {0};
+                let white_oo= if fen_board.white_can_oo {1} else {0};
+                let black_ooo= if fen_board.black_can_ooo {1} else {0};
+                let black_oo= if fen_board.black_can_oo {1} else {0};
+
+                board.metadata |= white_ooo << 0;
+                board.metadata |= white_oo << 1;
+                board.metadata |= black_ooo << 2;
+                board.metadata |= black_oo << 3;
+                if let Some( ep_square ) = fen_board.en_passant_square {
+                    board.metadata |= ( (ep_square as u32) & 7 ) << 4;
+                    board.metadata |= 1 << 7;
+                }
+                board.metadata |= is_white_move << 8;
+                board.metadata |= (fen_board.halfmove_clock as u32 & 127) << 9;
+                board.metadata |= (fen_board.fullmove_number as u32) << 16;
+                Some( board )
+            }
+            Err( error ) => {
+                println!( "Error Parsing fen: {:?}", error );
+                None
             }
         }
     }
