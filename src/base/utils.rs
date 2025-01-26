@@ -1,4 +1,4 @@
-use crate::base::defs::{ Board, CastleSide, PieceColour, LegalMoveVec };
+use crate::base::defs::{ Board, CastleSide, PieceColour, LegalMoveVec, PieceType };
 use fen::{ Color, PieceKind };
 use serde_json::to_writer_pretty;
 use std::fs::File;
@@ -133,6 +133,68 @@ impl Board {
         } else {
             None
         }
+    }
+
+    pub fn get_directional_bit_map(&self, pos: i8, piece_type: PieceType) -> u64 {
+        let mut final_dir_bitmap = 0;
+        let is_black: u8 = if ((self.metadata >> 8) & 1) == 1 { 0 } else { 1 };
+        let index: i8 = (63 - pos) as i8;
+        let x = index / 8;
+        let y = index % 8;
+        let curr_colour: PieceColour = match is_black {
+            1 => PieceColour::Black,
+            0 => PieceColour::White,
+            _ => PieceColour::Any,
+        };
+        let opp_colour: PieceColour = match is_black {
+            0 => PieceColour::Black,
+            1 => PieceColour::White,
+            _ => PieceColour::Any,
+        };
+        for direction in 0..4 {
+            let mut direction_bit_map = match piece_type {
+                PieceType::Bishop => { Self::DIAGONAL_RAY[direction][x as usize][y as usize] }
+                PieceType::Rook => { Self::STRAIGHT_RAY[direction][x as usize][y as usize] }
+                PieceType::Queen => {
+                    Self::DIAGONAL_RAY[direction][x as usize][y as usize] |
+                        Self::STRAIGHT_RAY[direction][x as usize][y as usize]
+                }
+                _ => { 0 }
+            };
+            let friend_pieces = self.consolidated_piece_map(&curr_colour) & direction_bit_map;
+            let opp_pieces = self.consolidated_piece_map(&opp_colour) & direction_bit_map;
+            let blocked_pieces = [friend_pieces, opp_pieces];
+            // Block Friend Piece lines
+            for (i, piece_map) in blocked_pieces.iter().enumerate() {
+                let mut temp_piece_map = *piece_map;
+                while temp_piece_map != 0 {
+                    let piece_pos = temp_piece_map.trailing_zeros() as i8;
+                    let piece_index: i8 = (63 - piece_pos) as i8;
+                    let piece_x = piece_index / 8;
+                    let piece_y = piece_index % 8;
+                    let mut piece_direction_bit_map = match piece_type {
+                        PieceType::Bishop => {
+                            Self::DIAGONAL_RAY[direction][piece_x as usize][piece_y as usize]
+                        }
+                        PieceType::Rook => {
+                            Self::STRAIGHT_RAY[direction][piece_x as usize][piece_y as usize]
+                        }
+                        PieceType::Queen => {
+                            Self::DIAGONAL_RAY[direction][piece_x as usize][piece_y as usize] |
+                                Self::STRAIGHT_RAY[direction][piece_x as usize][piece_y as usize]
+                        }
+                        _ => { 0 }
+                    };
+                    if i == 0 {
+                        piece_direction_bit_map |= 1 << piece_pos;
+                    }
+                    direction_bit_map &= !piece_direction_bit_map;
+                    temp_piece_map &= !(1 << piece_pos);
+                }
+            }
+            final_dir_bitmap |= direction_bit_map;
+        }
+        return final_dir_bitmap;
     }
 
     pub fn can_attack(&self, is_black: u8, target: u8) -> bool {

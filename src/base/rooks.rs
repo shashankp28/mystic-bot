@@ -1,6 +1,6 @@
-use crate::base::defs::{Board, PieceColour};
+use crate::base::defs::{ Board, PieceColour };
 
-use super::defs::LegalMoveVec;
+use super::defs::{ LegalMoveVec, PieceType };
 
 impl Board {
     pub fn generate_rook_moves(&self, legal_boards: &mut LegalMoveVec) {
@@ -14,71 +14,47 @@ impl Board {
         // 6. [X] Take care to update castling bits if rook captures opp. rook
         // 7. [X] Take care of updating per move tickers like white/block move, half clock, full number
         // 8. [X] Take care of removing En-passant on non-pawn move.
-        let is_black: u8 = if (self.metadata >> 8) & 1 == 1 { 0 } else { 1 };
 
-        let mut rook_positions: u64 = (self.rooks >> 64 * is_black) as u64;
+        let is_black: u8 = if ((self.metadata >> 8) & 1) == 1 { 0 } else { 1 };
+        let mut rook_positions: u64 = (self.rooks >> (64 * is_black)) as u64;
+        let opp_colour: PieceColour = match is_black {
+            0 => PieceColour::Black,
+            1 => PieceColour::White,
+            _ => PieceColour::Any,
+        };
+        let curr_colour: PieceColour = match is_black {
+            1 => PieceColour::Black,
+            0 => PieceColour::White,
+            _ => PieceColour::Any,
+        };
 
         while rook_positions != 0 {
             // Legal moves for 1 rook
             let pos: i8 = rook_positions.trailing_zeros() as i8;
             let index: i8 = (63 - pos) as i8;
-            let x = index % 8;
-            let y = index / 8;
+            let mut final_dir_bitmap = self.get_directional_bit_map(pos, PieceType::Rook);
 
-            let directions: [[i8; 2]; 4] = [[0, 1], [0, -1], [-1, 0], [1, 0]];
-            let curr_colour: PieceColour = match is_black {
-                1 => PieceColour::Black,
-                0 => PieceColour::White,
-                _ => PieceColour::Any,
-            };
-            let current_piece_map = self.consolidated_piece_map(&curr_colour);
+            while final_dir_bitmap != 0 {
+                let new_pos = final_dir_bitmap.trailing_zeros() as u8;
+                let new_index = (63 - new_pos) as u8;
 
-            for [delta_x, delta_y] in &directions {
-                let mut new_x = x + delta_x;
-                let mut new_y = y + delta_y;
-                loop {
-                    if new_x < 0 || new_x > 7 || new_y < 0 || new_y > 7 {
-                        break;
-                    }
-                    let new_index = (new_x + new_y * 8) as u8;
-                    let new_pos = (63 - new_index) as u8;
+                let mut new_board: Board = self.clone(); // Clone the board to modify it
 
-                    // Break if reached a current coloured piece
-                    if current_piece_map & (1 << new_pos) != 0 {
-                        break;
-                    }
+                new_board.remove_castling_for_rook(&curr_colour, index as u64); // remove castling for the rook since we are moving it.
+                new_board.remove_piece(index as u8); // Remove current rook position
+                // If I removed opp. rook, I update their castling bits
+                new_board.remove_castling_for_rook(&opp_colour, new_index as u64);
 
-                    let mut new_board: Board = self.clone(); // Clone the board to modify it
-                    new_board.remove_castling_for_rook(&curr_colour, index as u64); // remove castling for the rook since we are moving it.
+                let piece_removed = new_board.remove_piece(new_index); // Remove existing piece ( for capture )
+                new_board.rooks |= 1 << (64 * is_black + new_pos); // Update new rook position
 
-                    new_board.remove_piece(index as u8); // Remove current rook position
-
-                    // If I removed opp. rook, I update their castling bits
-                    let opp_colour: PieceColour = match is_black {
-                        0 => PieceColour::Black,
-                        1 => PieceColour::White,
-                        _ => PieceColour::Any,
-                    };
-                    new_board.remove_castling_for_rook(&opp_colour, new_index as u64);
-
-                    let piece_removed = new_board.remove_piece(new_index); // Remove existing piece ( for capture )
-
-                    new_board.rooks |= 1 << 64 * is_black + new_pos; // Update new rook position
-
-                    // Update Tickers
-                    new_board.update_tickers(piece_removed, is_black == 1);
-                    new_board.set_enpassant( None );
-                    new_board.latest_move = ( (index as u16) << 6 | new_index as u16) as u16;
-                    new_board.latest_move &= ( 1 << 12 ) - 1;
-                    legal_boards.push(&mut new_board);
-                    // Break if we had reached an opposite coloured piece
-                    if piece_removed {
-                        break;
-                    }
-
-                    new_x += delta_x;
-                    new_y += delta_y;
-                }
+                // Update Tickers
+                new_board.update_tickers(piece_removed, is_black == 1);
+                new_board.set_enpassant(None);
+                new_board.latest_move = (((index as u16) << 6) | (new_index as u16)) as u16;
+                new_board.latest_move &= (1 << 12) - 1;
+                legal_boards.push(&mut new_board);
+                final_dir_bitmap &= !(1 << new_pos); // Flip the bit map position to 0
             }
             rook_positions &= !(1 << pos); // Flip the rook position to 0
         }
@@ -87,8 +63,9 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::defs::{Board, BoardHash, LegalMoveVec};
+    use crate::base::defs::{ Board, BoardHash, LegalMoveVec };
     use std::collections::HashSet;
+    use std::time::Instant;
 
     #[test]
     fn test_generate_rook_moves() {
@@ -97,21 +74,33 @@ mod tests {
             Ok(board) => {
                 println!("Successfully loaded board: {:?}", board);
                 let mut legal_boards: LegalMoveVec = LegalMoveVec::new();
-                board.generate_rook_moves(&mut legal_boards);
-                assert_eq!(legal_boards.len(), 10, "Expected 10 legal moves, but got {}", legal_boards.len());
+                let iterations = 1000000;
+                let num_boards = 10;
+                let start_time = Instant::now();
+                for _ in 0..iterations {
+                    legal_boards.clear();
+                    board.generate_rook_moves(&mut legal_boards);
+                }
+                let elapsed_time_ns = start_time.elapsed().as_micros() * 1000;
+                let average_time_per_iteration = (elapsed_time_ns as f64) / (iterations as f64);
+                println!(
+                    "Average time per move generation over {} moves: {:.2} ns",
+                    iterations * num_boards,
+                    average_time_per_iteration / (num_boards as f64)
+                );
+                assert_eq!(
+                    legal_boards.len(),
+                    num_boards,
+                    "Expected {} legal moves, but got {}",
+                    num_boards,
+                    legal_boards.len()
+                );
 
                 let mut board_hashes: HashSet<BoardHash> = HashSet::new();
                 let hashes = [
-                    7091049467665180278,
-                    647243355553057862,
-                    13314191749323641045,
-                    17145172113589615753,
-                    6321615291756588204,
-                    5841539080194952656,
-                    13567278288467709581,
-                    316115115972194632,
-                    10565316067822619270,
-                    15896617303301213466,
+                    7091049467665180278, 647243355553057862, 13314191749323641045, 17145172113589615753,
+                    6321615291756588204, 5841539080194952656, 13567278288467709581, 316115115972194632,
+                    10565316067822619270, 15896617303301213466,
                 ];
                 for &hash in &hashes {
                     board_hashes.insert(hash);

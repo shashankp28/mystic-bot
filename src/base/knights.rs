@@ -81,6 +81,7 @@ impl Board {
 mod tests {
     use crate::base::defs::{Board, BoardHash, LegalMoveVec};
     use std::collections::HashSet;
+    use std::time::Instant;
 
     #[test]
     fn test_generate_knight_moves() {
@@ -89,8 +90,27 @@ mod tests {
             Ok( board ) => {
                 println!( "Successfully loaded board: {:?}", board );
                 let mut legal_boards: LegalMoveVec = LegalMoveVec::new();
-                board.generate_knight_moves( &mut legal_boards );
-                assert_eq!(legal_boards.len(), 12, "Expected 12 legal moves, but got {}", legal_boards.len());
+                let iterations = 1000000;
+                let num_boards = 12;
+                let start_time = Instant::now();
+                for _ in 0..iterations {
+                    legal_boards.clear();
+                    board.generate_knight_moves(&mut legal_boards);
+                }
+                let elapsed_time_ns = start_time.elapsed().as_micros() * 1000;
+                let average_time_per_iteration = (elapsed_time_ns as f64) / (iterations as f64);
+                println!(
+                    "Average time per move generation over {} moves: {:.2} ns",
+                    iterations * num_boards,
+                    average_time_per_iteration / (num_boards as f64)
+                );
+                assert_eq!(
+                    legal_boards.len(),
+                    num_boards,
+                    "Expected {} legal moves, but got {}",
+                    num_boards,
+                    legal_boards.len()
+                );
 
                 let mut board_hashes: HashSet<BoardHash> = HashSet::new();
                 let hashes = [

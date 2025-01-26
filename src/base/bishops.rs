@@ -1,6 +1,6 @@
 use crate::base::defs::{ Board, PieceColour };
 
-use super::defs::LegalMoveVec;
+use super::defs::{ LegalMoveVec, PieceType };
 
 impl Board {
     pub fn generate_bishop_moves(&self, legal_boards: &mut LegalMoveVec) {
@@ -15,69 +15,39 @@ impl Board {
         // 7. [ X ] Take care of removing En-passant on non-pawn move.
 
         let is_black: u8 = if ((self.metadata >> 8) & 1) == 1 { 0 } else { 1 };
-
         let mut bishop_positions: u64 = (self.bishops >> (64 * is_black)) as u64;
+        let opp_colour: PieceColour = match is_black {
+            0 => PieceColour::Black,
+            1 => PieceColour::White,
+            _ => PieceColour::Any,
+        };
 
         while bishop_positions != 0 {
             // Legal moves for 1 bishop
             let pos: i8 = bishop_positions.trailing_zeros() as i8;
             let index: i8 = (63 - pos) as i8;
-            let x = index / 8;
-            let y = index % 8;
-            let curr_colour: PieceColour = match is_black {
-                1 => PieceColour::Black,
-                0 => PieceColour::White,
-                _ => PieceColour::Any,
-            };
-            let opp_colour: PieceColour = match is_black {
-                0 => PieceColour::Black,
-                1 => PieceColour::White,
-                _ => PieceColour::Any,
-            };
+            let mut final_dir_bitmap = self.get_directional_bit_map(pos, PieceType::Bishop);
 
-            for direction in 0..4 {
-                let mut direction_bit_map = Self::DIAGONAL_RAY[direction][x as usize][y as usize];
-                let friend_pieces = self.consolidated_piece_map(&curr_colour) & direction_bit_map;
-                let opp_pieces = self.consolidated_piece_map(&opp_colour) & direction_bit_map;
-                let blocked_pieces = [friend_pieces, opp_pieces];
-                // Block Friend Piece lines
-                for (i, piece_map) in blocked_pieces.iter().enumerate() {
-                    let mut temp_piece_map = *piece_map;
-                    while temp_piece_map != 0 {
-                        let piece_pos = temp_piece_map.trailing_zeros() as i8;
-                        let piece_index: i8 = (63 - piece_pos) as i8;
-                        let piece_x = piece_index / 8;
-                        let piece_y = piece_index % 8;
-                        let mut piece_direction_bit_map =
-                            Self::DIAGONAL_RAY[direction][piece_x as usize][piece_y as usize];
-                        if i == 0 {
-                            piece_direction_bit_map |= 1 << piece_pos;
-                        }
-                        direction_bit_map &= !piece_direction_bit_map;
-                        temp_piece_map &= !(1 << piece_pos);
-                    }
-                }
-                while direction_bit_map != 0 {
-                    let new_pos = direction_bit_map.trailing_zeros() as u8;
-                    let new_index = (63 - new_pos) as u8;
+            while final_dir_bitmap != 0 {
+                let new_pos = final_dir_bitmap.trailing_zeros() as u8;
+                let new_index = (63 - new_pos) as u8;
 
-                    let mut new_board: Board = self.clone(); // Clone the board to modify it
-                    new_board.remove_piece(index as u8); // Remove current bishop position
+                let mut new_board: Board = self.clone(); // Clone the board to modify it
+                new_board.remove_piece(index as u8); // Remove current bishop position
 
-                    // If I removed opp. rook, I update their castling bits
-                    new_board.remove_castling_for_rook(&opp_colour, new_index as u64);
+                // If I removed opp. rook, I update their castling bits
+                new_board.remove_castling_for_rook(&opp_colour, new_index as u64);
 
-                    let piece_removed = new_board.remove_piece(new_index); // Remove existing piece ( for capture )
-                    new_board.bishops |= 1 << (64 * is_black + new_pos); // Update new bishop position
+                let piece_removed = new_board.remove_piece(new_index); // Remove existing piece ( for capture )
+                new_board.bishops |= 1 << (64 * is_black + new_pos); // Update new bishop position
 
-                    // Update Tickers
-                    new_board.update_tickers(piece_removed, is_black == 1);
-                    new_board.set_enpassant(None);
-                    new_board.latest_move = (((index as u16) << 6) | (new_index as u16)) as u16;
-                    new_board.latest_move &= (1 << 12) - 1;
-                    legal_boards.push(&mut new_board);
-                    direction_bit_map &= !(1 << new_pos); // Flip the bit map position to 0
-                }
+                // Update Tickers
+                new_board.update_tickers(piece_removed, is_black == 1);
+                new_board.set_enpassant(None);
+                new_board.latest_move = (((index as u16) << 6) | (new_index as u16)) as u16;
+                new_board.latest_move &= (1 << 12) - 1;
+                legal_boards.push(&mut new_board);
+                final_dir_bitmap &= !(1 << new_pos); // Flip the bit map position to 0
             }
             bishop_positions &= !(1 << pos); // Flip the bishop position to 0
         }
