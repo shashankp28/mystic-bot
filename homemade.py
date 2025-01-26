@@ -12,8 +12,11 @@ import logging
 import json
 import subprocess
 import time
-from notebooks.lib import boardToBitMap, bitMapFile, extractMove
+from notebooks.lib import oldstyle_fen
 import os
+from typing import Optional, Type
+from types import TracebackType
+
 
 
 # Use this logger variable to print messages to the console or log files.
@@ -80,13 +83,18 @@ class ComboEngine(ExampleEngine):
             my_time = time_limit.time
             my_inc = 0
         elif board.turn == chess.WHITE:
-            my_time = time_limit.white_clock if isinstance(time_limit.white_clock, int) else 0
-            my_inc = time_limit.white_inc if isinstance(time_limit.white_inc, int) else 0
+            my_time = time_limit.white_clock if isinstance(
+                time_limit.white_clock, int) else 0
+            my_inc = time_limit.white_inc if isinstance(
+                time_limit.white_inc, int) else 0
         else:
-            my_time = time_limit.black_clock if isinstance(time_limit.black_clock, int) else 0
-            my_inc = time_limit.black_inc if isinstance(time_limit.black_inc, int) else 0
+            my_time = time_limit.black_clock if isinstance(
+                time_limit.black_clock, int) else 0
+            my_inc = time_limit.black_inc if isinstance(
+                time_limit.black_inc, int) else 0
 
-        possible_moves = root_moves if isinstance(root_moves, list) else list(board.legal_moves)
+        possible_moves = root_moves if isinstance(
+            root_moves, list) else list(board.legal_moves)
 
         if my_time / 60 + my_inc > 10:
             # Choose a random move.
@@ -99,7 +107,7 @@ class ComboEngine(ExampleEngine):
 
 
 class MysticBot(ExampleEngine):
-    
+
     """
     Get a move using multiple different methods.
 
@@ -107,14 +115,10 @@ class MysticBot(ExampleEngine):
     """
 
     def __init__(self, *args, **kwargs):
-        directory_path = "./tmp"
-        fileName = random.randint( 1000000, 9999999 )
-        os.makedirs(directory_path, exist_ok=True)
         super().__init__(*args, **kwargs)
         self.executable = "./target/release/mystic-bot"
-        self.writePath = f"{directory_path}/{fileName}.json"
         self.chessBoard = chess.Board()
-        self.timeout = 60 # Not used yet
+        self.timeout = 60  # Not used yet
 
         # Run the bot process in the background and wait for 'Mystic Bot Ready' to appear
         self.bot_process = subprocess.Popen(
@@ -125,30 +129,29 @@ class MysticBot(ExampleEngine):
             text=True
         )
 
-        logger.info( "Waiting for Bot to initialize..." )
+        logger.info("Waiting for Bot to initialize...")
         while True:
             line = self.bot_process.stdout.readline().strip()
             if "Mystic Bot Ready" in line:
-                time.sleep( 0.5 )  # Just for safety
+                time.sleep(0.5)  # Just for safety
                 break
-            print( line )
+            print(line)
         logger.info("Bot initialized successfully!!")
 
     def set_chess_board(self, board):
-        bitMap = boardToBitMap(board)
-        bitMapFile(self.writePath, bitMap, isRead=False)
         self.chessBoard = board
 
     def get_best_move(self):
-        self.bot_process.stdin.write(f"{self.writePath}\n")
+        self.bot_process.stdin.write(f'"{oldstyle_fen(self.chessBoard)}"\n')
         self.bot_process.stdin.flush()
         output = []
         while True:
             line = self.bot_process.stdout.readline().strip()
-            if "New Board Saved Successfully" in line: break
-            output.append( line )
-        move = extractMove( bitMapFile( self.writePath ) )
-        return move, '\n'.join( output )
+            output.append(line)
+            if "Best next move" in line:
+                break
+        move = output[-1].split()[-1]
+        return move, '\n'.join(output)
 
     def search(self, board: chess.Board, time_limit: Limit, ponder: bool, draw_offered: bool, root_moves: MOVE) -> PlayResult:
         """
@@ -162,16 +165,40 @@ class MysticBot(ExampleEngine):
         :return: The move to play.
         """
 
-        self.set_chess_board( board )
+        self.set_chess_board(board)
         move, result = self.get_best_move()
-        logger.info( result+"\n" )
+        logger.info(result+"\n")
         logger.info(f"The move played by bot: {move}")
-        moveObj = chess.Move.from_uci(move)        
+        moveObj = chess.Move.from_uci(move)
 
         return PlayResult(moveObj, None, draw_offered=draw_offered)
 
+    def terminate_bot(self):
+        """
+        Explicitly terminate the bot process.
+        """
+        if self.bot_process:
+            self.bot_process.stdin.write("exit\n")
+            self.bot_process.stdin.flush()
+            self.bot_process.wait()
+            logger.info("Bot process terminated!!")
+            self.bot_process = None
+
     def __del__(self):
-        self.bot_process.stdin.write("exit\n")
-        self.bot_process.stdin.flush()
-        self.bot_process.wait()
-        logger.info("Bot process terminated!!")
+        """
+        Ensure bot process is terminated when the object is deleted.
+        """
+        if self.bot_process:
+            self.terminate_bot()
+
+    def __exit__(self, exc_type: Optional[Type[BaseException]],
+                     exc_value: Optional[BaseException],
+                     traceback: Optional[TracebackType]) -> None:
+        """Exit context and allow engine to shutdown nicely if there was no exception."""
+        if exc_type is None:
+            self.ping()
+            self.quit()
+        self.engine.__exit__(exc_type, exc_value, traceback)
+        if self.bot_process:
+            self.terminate_bot()
+

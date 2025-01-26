@@ -3,6 +3,7 @@ import random
 import json
 from IPython.display import display, SVG
 
+
 def random_move_game(board, num_moves=20):
     for _ in range(num_moves):
         legal_moves = list(board.legal_moves)
@@ -15,15 +16,15 @@ def random_move_game(board, num_moves=20):
 
 def numPieces(bitMap):
 
-   def sum_bits(num):
-      return bin(num).count('1')
+    def sum_bits(num):
+        return bin(num).count('1')
 
-   return sum_bits(bitMap["rooks"]) + \
-       sum_bits(bitMap["knights"]) + \
-       sum_bits(bitMap["bishops"]) + \
-       sum_bits(bitMap["queens"]) + \
-       sum_bits(bitMap["kings"]) + \
-       sum_bits(bitMap["pawns"])
+    return sum_bits(bitMap["rooks"]) + \
+        sum_bits(bitMap["knights"]) + \
+        sum_bits(bitMap["bishops"]) + \
+        sum_bits(bitMap["queens"]) + \
+        sum_bits(bitMap["kings"]) + \
+        sum_bits(bitMap["pawns"])
 
 
 def getPosFromNotation(notation: str, isWhite: bool):
@@ -33,10 +34,10 @@ def getPosFromNotation(notation: str, isWhite: bool):
 
 
 def isSameColorPiecePresent(board, pos, isWhiteMove: bool):
-   for pieces in board:
-      if board[pieces] & (1 << (64*(not isWhiteMove) + pos)):
-         return True
-   return False
+    for pieces in board:
+        if board[pieces] & (1 << (64*(not isWhiteMove) + pos)):
+            return True
+    return False
 
 
 def isOppositeColorPiecePresent(board, pos, isWhiteMove: bool):
@@ -44,107 +45,107 @@ def isOppositeColorPiecePresent(board, pos, isWhiteMove: bool):
 
 
 def isMovePossible(board, pos, isWhiteMove: bool):
-   return not (pos >= 64 or pos < 0 or isSameColorPiecePresent(board, pos, isWhiteMove))
+    return not (pos >= 64 or pos < 0 or isSameColorPiecePresent(board, pos, isWhiteMove))
 
 
 def boardToBitMap(board):
 
-   pieceStructMap = {
-       "r": "rooks",
-       "n": "knights",
-       "b": "bishops",
-       "k": "kings",
-       "q": "queens",
-       "p": "pawns",
-   }
+    pieceStructMap = {
+        "r": "rooks",
+        "n": "knights",
+        "b": "bishops",
+        "k": "kings",
+        "q": "queens",
+        "p": "pawns",
+    }
 
-   boardBitMap = {
-       "rooks": 0,
-       "knights": 0,
-       "bishops": 0,
-       "queens": 0,
-       "kings": 0,
-       "pawns": 0,
-       "metadata": 0,
-       "latest_move": 0
-   }
+    boardBitMap = {
+        "rooks": 0,
+        "knights": 0,
+        "bishops": 0,
+        "queens": 0,
+        "kings": 0,
+        "pawns": 0,
+        "metadata": 0,
+        "latest_move": 0
+    }
 
-   for index, piece in board.piece_map().items():
-      isBlack = piece.symbol().islower()
-      effIndex = 64*isBlack + (63 - index)
-      boardBitMap[pieceStructMap[piece.symbol().lower()]] |= 1 << effIndex
+    for index, piece in board.piece_map().items():
+        isBlack = piece.symbol().islower()
+        effIndex = 64*isBlack + (63 - index)
+        boardBitMap[pieceStructMap[piece.symbol().lower()]] |= 1 << effIndex
 
-   metadata = 0
-   metadata |= board.fullmove_number << 16
-   metadata |= board.halfmove_clock << 9
-   metadata |= board.turn << 8
-   en_passant_square = board.ep_square
-   metadata |= bool(en_passant_square) << 7
-   if en_passant_square:
-      column_number = chess.square_file(en_passant_square)
-      metadata |= column_number << 4
-   metadata |= board.has_kingside_castling_rights(0) << 3
-   metadata |= board.has_queenside_castling_rights(0) << 2
-   metadata |= board.has_kingside_castling_rights(1) << 1
-   metadata |= board.has_queenside_castling_rights(1) << 0
-   boardBitMap['metadata'] = metadata
+    metadata = 0
+    metadata |= board.fullmove_number << 16
+    metadata |= board.halfmove_clock << 9
+    metadata |= board.turn << 8
+    en_passant_square = board.ep_square
+    metadata |= bool(en_passant_square) << 7
+    if en_passant_square:
+        column_number = chess.square_file(en_passant_square)
+        metadata |= column_number << 4
+    metadata |= board.has_kingside_castling_rights(0) << 3
+    metadata |= board.has_queenside_castling_rights(0) << 2
+    metadata |= board.has_kingside_castling_rights(1) << 1
+    metadata |= board.has_queenside_castling_rights(1) << 0
+    boardBitMap['metadata'] = metadata
 
-   return boardBitMap
+    return boardBitMap
 
 
 def bitMapFile(fileName, bitMap=None, isRead=True):
-   if isRead:
-      with open(fileName, "r+") as f:
-         bitMap = json.load(f)
-         return bitMap
-   else:
-      assert bitMap is not None, "No bitMap provided  to save!"
-      with open(fileName, "w+") as f:
-         json.dump(bitMap, f, indent=2)
+    if isRead:
+        with open(fileName, "r+") as f:
+            bitMap = json.load(f)
+            return bitMap
+    else:
+        assert bitMap is not None, "No bitMap provided  to save!"
+        with open(fileName, "w+") as f:
+            json.dump(bitMap, f, indent=2)
 
 
 def bitMapToBoard(bitMap):
-   chessPieceMap = {
-       "rooks": chess.ROOK,
-       "knights": chess.KNIGHT,
-       "bishops": chess.BISHOP,
-       "kings": chess.KING,
-       "queens": chess.QUEEN,
-       "pawns": chess.PAWN
-   }
+    chessPieceMap = {
+        "rooks": chess.ROOK,
+        "knights": chess.KNIGHT,
+        "bishops": chess.BISHOP,
+        "kings": chess.KING,
+        "queens": chess.QUEEN,
+        "pawns": chess.PAWN
+    }
 
-   chessBoard = chess.Board()
-   chessBoard.clear_board()
+    chessBoard = chess.Board()
+    chessBoard.clear_board()
 
-   for key, value in bitMap.items():
-      if key not in ['metadata', 'latest_move']:
-         for index in range(127, -1, -1):
-            isPresent = value & 1 << index
-            if isPresent:
-               isWhite = index <= 63
-               effIndex = 63 - (index - (not isWhite) * 64)
-               chessPiece = chess.Piece(chessPieceMap[key], isWhite)
-               chessBoard.set_piece_at(effIndex, chessPiece)
+    for key, value in bitMap.items():
+        if key not in ['metadata', 'latest_move']:
+            for index in range(127, -1, -1):
+                isPresent = value & 1 << index
+                if isPresent:
+                    isWhite = index <= 63
+                    effIndex = 63 - (index - (not isWhite) * 64)
+                    chessPiece = chess.Piece(chessPieceMap[key], isWhite)
+                    chessBoard.set_piece_at(effIndex, chessPiece)
 
-   castlingFen, metadata = '', bitMap['metadata']
-   chessBoard.fullmove_number = metadata >> 16
-   chessBoard.halfmove_clock = metadata >> 9 & 127
-   chessBoard.turn = bool(metadata & 1 << 8)
-   enPassantSquareExists = metadata & 1 << 7
-   if enPassantSquareExists:
-      rowNum = 5 if chessBoard.turn else 2
-      chessBoard.ep_square = chess.square(metadata >> 4 & 7, rowNum)
-   if metadata & 1 << 1:
-       castlingFen += 'K'
-   if metadata & 1 << 0:
-       castlingFen += 'Q'
-   if metadata & 1 << 3:
-       castlingFen += 'k'
-   if metadata & 1 << 2:
-       castlingFen += 'q'
-   chessBoard.set_castling_fen(castlingFen)
+    castlingFen, metadata = '', bitMap['metadata']
+    chessBoard.fullmove_number = metadata >> 16
+    chessBoard.halfmove_clock = metadata >> 9 & 127
+    chessBoard.turn = bool(metadata & 1 << 8)
+    enPassantSquareExists = metadata & 1 << 7
+    if enPassantSquareExists:
+        rowNum = 5 if chessBoard.turn else 2
+        chessBoard.ep_square = chess.square(metadata >> 4 & 7, rowNum)
+    if metadata & 1 << 1:
+        castlingFen += 'K'
+    if metadata & 1 << 0:
+        castlingFen += 'Q'
+    if metadata & 1 << 3:
+        castlingFen += 'k'
+    if metadata & 1 << 2:
+        castlingFen += 'q'
+    chessBoard.set_castling_fen(castlingFen)
 
-   return chessBoard
+    return chessBoard
 
 
 def display_board(board, size=800):
@@ -153,29 +154,41 @@ def display_board(board, size=800):
 
 
 def extractMove(bitMap):
-   latestMove = bitMap['latest_move']
+    latestMove = bitMap['latest_move']
 
-   source = (latestMove >> 6) & 63
-   destination = latestMove & 63
-   sourceX, sourceY = source % 8, source//8
-   destinationX, destinationY = destination % 8, destination//8
+    source = (latestMove >> 6) & 63
+    destination = latestMove & 63
+    sourceX, sourceY = source % 8, source//8
+    destinationX, destinationY = destination % 8, destination//8
 
-   sourceLetters = chr(sourceX + ord('a')) + str(sourceY+1)
-   destinationLetters = chr(destinationX + ord('a')) + str(destinationY+1)
+    sourceLetters = chr(sourceX + ord('a')) + str(sourceY+1)
+    destinationLetters = chr(destinationX + ord('a')) + str(destinationY+1)
 
-   # Check for pawn promotion
-   isPawnPromotion = (latestMove >> 14) & 1
-   promotionPiece = ''
-   if isPawnPromotion:
-      promotionType = (latestMove >> 12) & 3
-      if promotionType == 0:
-         promotionPiece = 'q'
-      elif promotionType == 1:
-         promotionPiece = 'r'
-      elif promotionType == 2:
-         promotionPiece = 'b'
-      elif promotionType == 3:
-         promotionPiece = 'n'
-      return f"{sourceLetters}{destinationLetters}{promotionPiece}"
+    # Check for pawn promotion
+    isPawnPromotion = (latestMove >> 14) & 1
+    promotionPiece = ''
+    if isPawnPromotion:
+        promotionType = (latestMove >> 12) & 3
+        if promotionType == 0:
+            promotionPiece = 'q'
+        elif promotionType == 1:
+            promotionPiece = 'r'
+        elif promotionType == 2:
+            promotionPiece = 'b'
+        elif promotionType == 3:
+            promotionPiece = 'n'
+        return f"{sourceLetters}{destinationLetters}{promotionPiece}"
 
-   return f"{sourceLetters}{destinationLetters}"
+    return f"{sourceLetters}{destinationLetters}"
+
+
+def oldstyle_fen(board):
+    builder = []
+    builder.append(board.board_fen())
+    builder.append("w" if board.turn == chess.WHITE else "b")
+    builder.append(board.castling_xfen())
+    builder.append(
+        chess.SQUARE_NAMES[board.ep_square] if board.ep_square else "-")
+    builder.append(str(board.halfmove_clock))
+    builder.append(str(board.fullmove_number))
+    return " ".join(builder)

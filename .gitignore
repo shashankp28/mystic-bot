@@ -185,6 +185,7 @@ TEMP/*
 
 tmp.json
 stockfish-windows-x86-64.exe
+stockfish-ubuntu-x86-64
 db/
 openings.json
 tmp/

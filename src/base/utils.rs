@@ -256,6 +256,38 @@ impl Board {
         }
     }
 
+    pub fn get_next_uci(&self) -> String {
+        // Extract the information from the `latest_move` u16 field
+        let is_promotion = ((self.latest_move >> 15) & 1) != 0;
+        let promotion_type = (self.latest_move >> 13) & 0b11; // 2 bits for promotion type
+        let source_square = (self.latest_move >> 6) & 0b111111; // 6 bits for source
+        let destination_square = self.latest_move & 0b111111; // 6 bits for destination
+
+        // Convert the source and destination squares to UCI coordinates
+        let source_uci = Self::square_to_uci(source_square);
+        let destination_uci = Self::square_to_uci(destination_square);
+
+        // Handle promotion case
+        if is_promotion {
+            let promotion_char = match promotion_type {
+                0 => "Q", // Queen
+                1 => "R", // Rook
+                2 => "B", // Bishop
+                3 => "L", // Knight
+                _ => unreachable!(),
+            };
+            format!("{}{}{}", source_uci, destination_uci, promotion_char)
+        } else {
+            format!("{}{}", source_uci, destination_uci)
+        }
+    }
+
+    fn square_to_uci(square: u16) -> String {
+        let file = ((square % 8) as u8) + b'a'; // Files are 'a' to 'h'
+        let rank = ((square / 8) as u8) + b'1'; // Ranks are '1' to '8'
+        format!("{}{}", file as char, rank as char)
+    }
+
     pub fn from_fen(fen_string: &String) -> Option<Board> {
         let result = fen::BoardState::from_fen(fen_string);
         match result {
@@ -273,7 +305,7 @@ impl Board {
                 for index in 0..64 {
                     if let Some(piece) = fen_board.pieces.get(index).unwrap() {
                         let piece_black = if piece.color == Color::Black { 1 } else { 0 };
-                        let offset = 63 - index + piece_black * 63;
+                        let offset = 63 - index + piece_black * 64;
                         match piece.kind {
                             PieceKind::King => {
                                 board.kings |= 1 << offset;
