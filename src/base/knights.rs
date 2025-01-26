@@ -1,53 +1,44 @@
-use crate::base::defs::{Board, PieceColour};
+use crate::base::defs::{ Board, PieceColour };
 
 use super::defs::LegalMoveVec;
 
 impl Board {
-
-    pub fn generate_knight_moves( &self, legal_boards: &mut LegalMoveVec ) {
-        // TODO: Knight Moves
-        // 1. [ X ] All 8 L shape moves around it ( Unless EOB or obstruction ) including capture
-        // 2. [ X ] Take care to update castling bits if knight captures opp. rook
-        // 3. [ X ] Take care of removing En-passant on non-pawn move.
-        let basic_knight_map: u64 = 21617444997;  // Through Experimentation
-        let left_half_board_map: u64 = 17361641481138401520;  // Through Experimentation
-        let is_black: u8 = if ( self.metadata >> 8 ) & 1 == 1 { 0 } else { 1 };
-        let mut knight_positions: u64 = ( self.knights >> 64*is_black ) as u64;
+    pub fn get_knight_move_bit_map(&self, pos: i8, is_black: u8) -> u64 {
+        let index: i8 = (63 - pos) as i8;
+        let x = index / 8;
+        let y = index % 8;
         let curr_colour: PieceColour = match is_black {
             1 => PieceColour::Black,
             0 => PieceColour::White,
             _ => PieceColour::Any,
         };
-        let same_piece_map = self.consolidated_piece_map( &curr_colour );
+        let mut final_bit_map = Self::KNIGHT_MAP[x as usize][y as usize];
+        let friend_pieces = self.consolidated_piece_map(&curr_colour);
+        final_bit_map &= !friend_pieces;
+        return final_bit_map;
+    }
+
+    pub fn generate_knight_moves(&self) -> LegalMoveVec {
+        // TODO: Knight Moves
+        // 1. [ X ] All 8 L shape moves around it ( Unless EOB or obstruction ) including capture
+        // 2. [ X ] Take care to update castling bits if knight captures opp. rook
+        // 3. [ X ] Take care of removing En-passant on non-pawn move.
+        let mut legal_boards = LegalMoveVec::new();
+        let is_black: u8 = if ((self.metadata >> 8) & 1) == 1 { 0 } else { 1 };
+        let mut knight_positions: u64 = (self.knights >> (64 * is_black)) as u64;
         while knight_positions != 0 {
             // Legal moves for 1 knight
             let pos: u8 = knight_positions.trailing_zeros() as u8;
-            let index: u8 = ( 63 - pos ) as u8;
-            let mut new_knight_map: u64 = 0;
+            let index: u8 = (63 - pos) as u8;
+            let mut knight_map = self.get_knight_move_bit_map(pos as i8, is_black);
 
-            // Through Experimentation
-            if index + 17 <= 63 {
-                new_knight_map |= basic_knight_map << ( 63 - ( index + 17 ) );
-            } else {
-                new_knight_map |= basic_knight_map >> ( ( index + 17 ) - 63 )
-            }
-            if index%8 < 2 {
-                new_knight_map &= left_half_board_map
-            }
-            if index%8 > 5 {
-                new_knight_map &= !left_half_board_map
-            }
-
-            // Remove all bits where the knight jumps on same coloured piece
-            new_knight_map &= !same_piece_map;
-            
-            while new_knight_map != 0 {
+            while knight_map != 0 {
                 // Update the legal move in the vector
-                let new_pos: u8 = new_knight_map.trailing_zeros() as u8;
-                let new_index: u8 = ( 63 - new_pos ) as u8;
+                let new_pos: u8 = knight_map.trailing_zeros() as u8;
+                let new_index: u8 = (63 - new_pos) as u8;
 
                 let mut new_board: Board = self.clone(); // Clone the board to modify it
-                new_board.remove_piece( index ); // Remove current knight position
+                new_board.remove_piece(index); // Remove current knight position
 
                 // If I removed opp. rook, I update their castling bits
                 let opp_colour: PieceColour = match is_black {
@@ -57,45 +48,44 @@ impl Board {
                 };
                 new_board.remove_castling_for_rook(&opp_colour, new_index as u64);
 
-                let piece_removed = new_board.remove_piece( new_index ); // Remove existing piece ( for capture )
-                new_board.knights |= 1 << 64*is_black+new_pos; // Update new knight position
+                let piece_removed = new_board.remove_piece(new_index); // Remove existing piece ( for capture )
+                new_board.knights |= 1 << (64 * is_black + new_pos); // Update new knight position
 
                 // Update Half & Full move clocks & toggle black / white move
-                new_board.update_tickers( piece_removed, is_black==1 );
-                new_board.set_enpassant( None );
-                new_board.latest_move = ( (index as u16) << 6 | new_index as u16) as u16;
-                new_board.latest_move &= ( 1 << 12 ) - 1;
+                new_board.update_tickers(piece_removed, is_black == 1);
+                new_board.set_enpassant(None);
+                new_board.latest_move = (((index as u16) << 6) | (new_index as u16)) as u16;
+                new_board.latest_move &= (1 << 12) - 1;
                 legal_boards.push(&mut new_board);
 
-                new_knight_map &= !( 1 << new_pos ); // Flip the knight position to 0 
+                knight_map &= !(1 << new_pos); // Flip the knight position to 0
             }
 
-            knight_positions &= !( 1 << pos ); // Flip the knight position to 0 
+            knight_positions &= !(1 << pos); // Flip the knight position to 0
         }
+        legal_boards
     }
-
 }
-
 
 #[cfg(test)]
 mod tests {
-    use crate::base::defs::{Board, BoardHash, LegalMoveVec};
+    use crate::base::defs::{ Board, BoardHash, LegalMoveVec };
     use std::collections::HashSet;
     use std::time::Instant;
 
     #[test]
     fn test_generate_knight_moves() {
         let file_path = "sample/test/knights.json";
-        match Board::from_file( file_path ) {
-            Ok( board ) => {
-                println!( "Successfully loaded board: {:?}", board );
+        match Board::from_file(file_path) {
+            Ok(board) => {
+                println!("Successfully loaded board: {:?}", board);
                 let mut legal_boards: LegalMoveVec = LegalMoveVec::new();
                 let iterations = 1000000;
                 let num_boards = 12;
                 let start_time = Instant::now();
                 for _ in 0..iterations {
                     legal_boards.clear();
-                    board.generate_knight_moves(&mut legal_boards);
+                    legal_boards = board.generate_knight_moves();
                 }
                 let elapsed_time_ns = start_time.elapsed().as_micros() * 1000;
                 let average_time_per_iteration = (elapsed_time_ns as f64) / (iterations as f64);
@@ -114,18 +104,9 @@ mod tests {
 
                 let mut board_hashes: HashSet<BoardHash> = HashSet::new();
                 let hashes = [
-                    5820322162005059073,
-                    7248332367856294888,
-                    3343382540968063460,
-                    13734315367842045572,
-                    15671716411796014867,
-                    14442241140689718116,
-                    2629788050489721178,
-                    5902975122334121358,
-                    3148796746828343536,
-                    6017073384496795541,
-                    8083710378863667238,
-                    2302243076185838823,
+                    5820322162005059073, 7248332367856294888, 3343382540968063460, 13734315367842045572,
+                    15671716411796014867, 14442241140689718116, 2629788050489721178, 5902975122334121358,
+                    3148796746828343536, 6017073384496795541, 8083710378863667238, 2302243076185838823,
                 ];
                 for &hash in &hashes {
                     board_hashes.insert(hash);
@@ -148,10 +129,9 @@ mod tests {
                         hash
                     );
                 }
-
             }
-            Err( e ) => {
-                println!( "Error loading board: {}", e );
+            Err(e) => {
+                println!("Error loading board: {}", e);
             }
         }
     }

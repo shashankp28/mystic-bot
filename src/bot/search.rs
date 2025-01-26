@@ -61,9 +61,7 @@ impl Search {
         let is_black: u8 = if (board.metadata >> 8) & 1 == 1 { 0 } else { 1 };
         let game_state = if legal_moves.len() == 0 {
             let king_positions: u64 = (board.kings >> (64 * is_black)) as u64;
-            let pos: i8 = king_positions.trailing_zeros() as i8;
-            let index: i8 = 63 - pos;
-            if board.can_attack(1 - is_black, index as u8) {
+            if board.can_attack(1 - is_black, king_positions) {
                 GameState::Checkmate
             } else {
                 GameState::Stalemate
@@ -154,9 +152,7 @@ impl Search {
         let is_black: u8 = if (board.metadata >> 8) & 1 == 1 { 0 } else { 1 };
         let game_state = if legal_moves.len() == 0 {
             let king_positions: u64 = (board.kings >> (64 * is_black)) as u64;
-            let pos: i8 = king_positions.trailing_zeros() as i8;
-            let index: i8 = 63 - pos;
-            if board.can_attack(1 - is_black, index as u8) {
+            if board.can_attack(1 - is_black, king_positions) {
                 GameState::Checkmate
             } else {
                 GameState::Stalemate

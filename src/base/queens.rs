@@ -1,9 +1,72 @@
 use crate::base::defs::{ Board, PieceColour };
 
-use super::defs::{ LegalMoveVec, PieceType };
+use super::defs::LegalMoveVec;
 
 impl Board {
-    pub fn generate_queen_moves(&self, legal_boards: &mut LegalMoveVec) {
+    pub fn get_queen_move_bit_map(&self, pos: i8, is_black: u8) -> u64 {
+        let mut final_dir_bitmap = 0;
+        let index: i8 = (63 - pos) as i8;
+        let x = index / 8;
+        let y = index % 8;
+        let curr_colour: PieceColour = match is_black {
+            1 => PieceColour::Black,
+            0 => PieceColour::White,
+            _ => PieceColour::Any,
+        };
+        let opp_colour: PieceColour = match is_black {
+            0 => PieceColour::Black,
+            1 => PieceColour::White,
+            _ => PieceColour::Any,
+        };
+        for direction in 0..8 {
+            let mut direction_bit_map = if direction / 4 == 0 {
+                Self::DIAGONAL_RAY[direction % 4][x as usize][y as usize]
+            } else {
+                Self::STRAIGHT_RAY[direction % 4][x as usize][y as usize]
+            };
+            let friend_pieces = self.consolidated_piece_map(&curr_colour) & direction_bit_map;
+            let opp_pieces = self.consolidated_piece_map(&opp_colour) & direction_bit_map;
+            let blocked_pieces = [friend_pieces, opp_pieces];
+            // Block Friend Piece lines
+            for (i, piece_map) in blocked_pieces.iter().enumerate() {
+                let mut temp_piece_map = *piece_map;
+                let mut closest_piece_pos = -1;
+                let mut closest_distance = 100;
+
+                while temp_piece_map != 0 {
+                    let piece_pos = temp_piece_map.trailing_zeros() as i8;
+                    let piece_index: i8 = (63 - piece_pos) as i8;
+                    let piece_x = piece_index / 8;
+                    let piece_y = piece_index % 8;
+                    let dist = (piece_x - x).abs() + (piece_y - y).abs();
+                    if dist < closest_distance {
+                        closest_distance = dist;
+                        closest_piece_pos = piece_pos;
+                    }
+                    temp_piece_map &= !(1 << piece_pos);
+                }
+                if closest_piece_pos >= 0 {
+                    let piece_pos = closest_piece_pos;
+                    let piece_index: i8 = (63 - piece_pos) as i8;
+                    let piece_x = piece_index / 8;
+                    let piece_y = piece_index % 8;
+                    let mut piece_direction_bit_map = if direction / 4 == 0 {
+                        Self::DIAGONAL_RAY[direction % 4][piece_x as usize][piece_y as usize]
+                    } else {
+                        Self::STRAIGHT_RAY[direction % 4][piece_x as usize][piece_y as usize]
+                    };
+                    if i == 0 {
+                        piece_direction_bit_map |= 1 << piece_pos;
+                    }
+                    direction_bit_map &= !piece_direction_bit_map;
+                }
+            }
+            final_dir_bitmap |= direction_bit_map;
+        }
+        return final_dir_bitmap;
+    }
+
+    pub fn generate_queen_moves(&self) -> LegalMoveVec {
         // TODO: Queen Moves
 
         // 1. [ X ] Every Straight Up until EOB ( End of board ) or capture or obstruction
@@ -17,7 +80,7 @@ impl Board {
         // 9. [ X ] Take care to update castling bits if queen captures opp. rook
         // 10. [ X ] Take care of updating per move tickers like white/block move, half clock, full number
         // 11. [ X ] Take care of removing En-passant on non-pawn move.
-
+        let mut legal_boards = LegalMoveVec::new();
         let is_black: u8 = if ((self.metadata >> 8) & 1) == 1 { 0 } else { 1 };
         let mut queen_positions: u64 = (self.queens >> (64 * is_black)) as u64;
         let opp_colour: PieceColour = match is_black {
@@ -30,7 +93,7 @@ impl Board {
             // Legal moves for 1 queen
             let pos: i8 = queen_positions.trailing_zeros() as i8;
             let index: i8 = (63 - pos) as i8;
-            let mut final_dir_bitmap = self.get_directional_bit_map(pos, PieceType::Queen);
+            let mut final_dir_bitmap = self.get_queen_move_bit_map(pos, is_black);
 
             while final_dir_bitmap != 0 {
                 let new_pos = final_dir_bitmap.trailing_zeros() as u8;
@@ -55,6 +118,7 @@ impl Board {
             }
             queen_positions &= !(1 << pos); // Flip the queen position to 0
         }
+        legal_boards
     }
 }
 
@@ -76,7 +140,7 @@ mod tests {
                 let start_time = Instant::now();
                 for _ in 0..iterations {
                     legal_boards.clear();
-                    board.generate_queen_moves(&mut legal_boards);
+                    legal_boards = board.generate_queen_moves();
                 }
                 let elapsed_time_ns = start_time.elapsed().as_micros() * 1000;
                 let average_time_per_iteration = (elapsed_time_ns as f64) / (iterations as f64);
