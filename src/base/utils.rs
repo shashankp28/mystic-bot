@@ -1,9 +1,9 @@
-use crate::base::defs::{Board, CastleSide, PieceColour, LegalMoveVec};
-use fen::{Color, PieceKind};
+use crate::base::defs::{ Board, CastleSide, PieceColour, LegalMoveVec };
+use fen::{ Color, PieceKind };
 use serde_json::to_writer_pretty;
 use std::fs::File;
 use std::hash::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use std::hash::{ Hash, Hasher };
 use std::io::Read;
 use std::path::Path;
 
@@ -24,7 +24,7 @@ impl Board {
         match colour {
             PieceColour::Black => (all_piece_map >> 64) as u64,
             PieceColour::White => all_piece_map as u64,
-            PieceColour::Any => (all_piece_map >> 64) as u64 | all_piece_map as u64,
+            PieceColour::Any => ((all_piece_map >> 64) as u64) | (all_piece_map as u64),
         }
     }
 
@@ -34,13 +34,13 @@ impl Board {
         // from the caller's side. Return True if a piece was actually removed
         let mut removal_map: u128 = 0;
         removal_map |= (1 << (63 - index)) | (1 << (127 - index));
-        let piece_removed: bool = (self.rooks & removal_map
-            | self.knights & removal_map
-            | self.bishops & removal_map
-            | self.queens & removal_map
-            | self.kings & removal_map
-            | self.pawns & removal_map)
-            != 0;
+        let piece_removed: bool =
+            ((self.rooks & removal_map) |
+                (self.knights & removal_map) |
+                (self.bishops & removal_map) |
+                (self.queens & removal_map) |
+                (self.kings & removal_map) |
+                (self.pawns & removal_map)) != 0;
         removal_map = !removal_map;
         self.rooks &= removal_map;
         self.knights &= removal_map;
@@ -54,11 +54,7 @@ impl Board {
     pub fn update_tickers(&mut self, half_reset: bool, is_black: bool) {
         let mut current_half_clock = (self.metadata >> 9) & 127;
         let mut current_full_number = self.metadata >> 16;
-        current_half_clock = if half_reset {
-            0
-        } else {
-            current_half_clock + 1
-        };
+        current_half_clock = if half_reset { 0 } else { current_half_clock + 1 };
         if is_black {
             current_full_number += 1;
         }
@@ -75,7 +71,7 @@ impl Board {
         // Removes Castling bit for a rook at index if it is present.
         match colour {
             PieceColour::Black => {
-                if self.rooks >> 64 as u64 & 1 << (63 - index) != 0 {
+                if ((self.rooks >> (64 as u64)) & (1 << (63 - index))) != 0 {
                     if index == 56 {
                         self.remove_castling_bits(CastleSide::Queen, colour);
                     } else if index == 63 {
@@ -84,7 +80,7 @@ impl Board {
                 }
             }
             PieceColour::White => {
-                if self.rooks as u64 & 1 << (63 - index) != 0 {
+                if ((self.rooks as u64) & (1 << (63 - index))) != 0 {
                     if index == 0 {
                         self.remove_castling_bits(CastleSide::Queen, colour);
                     } else if index == 7 {
@@ -98,21 +94,31 @@ impl Board {
 
     pub fn remove_castling_bits(&mut self, side: CastleSide, colour: &PieceColour) {
         match colour {
-            PieceColour::White => match side {
-                CastleSide::Queen => self.metadata &= !(1 << 0),
-                CastleSide::King => self.metadata &= !(1 << 1),
-            },
-            PieceColour::Black => match side {
-                CastleSide::Queen => self.metadata &= !(1 << 2),
-                CastleSide::King => self.metadata &= !(1 << 3),
-            },
+            PieceColour::White =>
+                match side {
+                    CastleSide::Queen => {
+                        self.metadata &= !(1 << 0);
+                    }
+                    CastleSide::King => {
+                        self.metadata &= !(1 << 1);
+                    }
+                }
+            PieceColour::Black =>
+                match side {
+                    CastleSide::Queen => {
+                        self.metadata &= !(1 << 2);
+                    }
+                    CastleSide::King => {
+                        self.metadata &= !(1 << 3);
+                    }
+                }
             PieceColour::Any => {}
         }
     }
 
     pub fn set_enpassant(&mut self, x: Option<u8>) {
         // Clear the en-passant bits (bits 4-7)
-        self.metadata &= !(0b11110000);
+        self.metadata &= !0b11110000;
 
         if let Some(pos) = x {
             // Set the en-passant bit (bit 7) and the position (bits 4-6)
@@ -122,32 +128,32 @@ impl Board {
     }
 
     pub fn get_enpassant(&self) -> Option<i8> {
-        if self.metadata & (1 << 7) != 0 {
+        if (self.metadata & (1 << 7)) != 0 {
             Some(((self.metadata >> 4) & 0b111) as i8)
         } else {
             None
         }
     }
 
-    pub fn can_attack( &self, is_black: u8, target: u8 ) -> bool {
+    pub fn can_attack(&self, is_black: u8, target: u8) -> bool {
         // Check if target is same colour
         let curr_colour: PieceColour = match is_black {
-                1 => PieceColour::Black,
-                0 => PieceColour::White,
-                _ => PieceColour::Any,
+            1 => PieceColour::Black,
+            0 => PieceColour::White,
+            _ => PieceColour::Any,
         };
         let curr_position_map = self.consolidated_piece_map(&curr_colour);
-        if curr_position_map & ( 1 << (63-target) ) != 0 {
+        if (curr_position_map & (1 << (63 - target))) != 0 {
             return false;
         }
         let all_piece_map = self.consolidated_piece_map(&PieceColour::Any);
 
         // Can Bishop+Queen Attack Diagonally?
-        let bishop_positions: u64 = (self.bishops >> 64 * is_black) as u64;
-        let queen_positions: u64 = (self.queens >> 64 * is_black) as u64;
+        let bishop_positions: u64 = (self.bishops >> (64 * is_black)) as u64;
+        let queen_positions: u64 = (self.queens >> (64 * is_black)) as u64;
         let mut bishop_queen_positions: u64 = bishop_positions | queen_positions;
-        let target_x = (target%8) as i8;
-        let target_y = (target/8) as i8;
+        let target_x = (target % 8) as i8;
+        let target_y = (target / 8) as i8;
         while bishop_queen_positions != 0 {
             // Pick a direction and go until one step behind the target
             // To check if there are no obstructions
@@ -155,14 +161,14 @@ impl Board {
             let index: i8 = (63 - pos) as i8;
             let x = index % 8;
             let y = index / 8;
-            if (target_x-x).abs() == (target_y-y).abs() {
-                let delta_x = (target_x-x)/(target_x-x).abs();
-                let delta_y = (target_y-y)/(target_y-y).abs();
-                let steps = (target_x-x).abs();
+            if (target_x - x).abs() == (target_y - y).abs() {
+                let delta_x = (target_x - x) / (target_x - x).abs();
+                let delta_y = (target_y - y) / (target_y - y).abs();
+                let steps = (target_x - x).abs();
                 let mut attacks = true;
                 for i in 1..steps {
-                    let new_index = x+i*delta_x + 8*(y+i*delta_y);
-                    if all_piece_map & ( 1 << (63-new_index) ) != 0 {
+                    let new_index = x + i * delta_x + 8 * (y + i * delta_y);
+                    if (all_piece_map & (1 << (63 - new_index))) != 0 {
                         attacks = false;
                         break;
                     }
@@ -171,12 +177,12 @@ impl Board {
                     return true;
                 }
             }
-            
-            bishop_queen_positions &= !(1 << pos);            
+
+            bishop_queen_positions &= !(1 << pos);
         }
-        
+
         // Can Rook+Queen Attack in a straight line?
-        let rook_positions: u64 = (self.rooks >> 64 * is_black) as u64;
+        let rook_positions: u64 = (self.rooks >> (64 * is_black)) as u64;
         let mut rook_queen_positions: u64 = rook_positions | queen_positions;
         while rook_queen_positions != 0 {
             // Pick a direction and go until one step behind the target
@@ -185,14 +191,14 @@ impl Board {
             let index: i8 = (63 - pos) as i8;
             let x = index % 8;
             let y = index / 8;
-            if (target_x-x).abs() == 0 || (target_y-y).abs() == 0 {
-                let delta_x = if target_x != x { (target_x-x)/(target_x-x).abs() } else { 0 };
-                let delta_y = if target_y != y { (target_y-y)/(target_y-y).abs() } else { 0 };
-                let steps = if target_x != x { (target_x-x).abs() } else { (target_y-y).abs() };
+            if (target_x - x).abs() == 0 || (target_y - y).abs() == 0 {
+                let delta_x = if target_x != x { (target_x - x) / (target_x - x).abs() } else { 0 };
+                let delta_y = if target_y != y { (target_y - y) / (target_y - y).abs() } else { 0 };
+                let steps = if target_x != x { (target_x - x).abs() } else { (target_y - y).abs() };
                 let mut attacks = true;
                 for i in 1..steps {
-                    let new_index = x+i*delta_x + 8*(y+i*delta_y);
-                    if all_piece_map & ( 1 << (63 - new_index) ) != 0 {
+                    let new_index = x + i * delta_x + 8 * (y + i * delta_y);
+                    if (all_piece_map & (1 << (63 - new_index))) != 0 {
                         attacks = false;
                         break;
                     }
@@ -201,27 +207,27 @@ impl Board {
                     return true;
                 }
             }
-            rook_queen_positions &= !(1 << pos);            
+            rook_queen_positions &= !(1 << pos);
         }
-        
+
         // Can Knight Attack?
-        let mut knight_positions: u64 = (self.knights >> 64 * is_black) as u64;
+        let mut knight_positions: u64 = (self.knights >> (64 * is_black)) as u64;
         while knight_positions != 0 {
             // Check the delta vector is of the form (+-2, +-1) or (+-1, +-2)
             let pos: i8 = knight_positions.trailing_zeros() as i8;
             let index: i8 = (63 - pos) as i8;
             let x = index % 8;
             let y = index / 8;
-            let delta_x = (target_x-x).abs();
-            let delta_y = (target_y-y).abs();
-            if (delta_x==2 && delta_y==1) || (delta_x==1 && delta_y==2) {
+            let delta_x = (target_x - x).abs();
+            let delta_y = (target_y - y).abs();
+            if (delta_x == 2 && delta_y == 1) || (delta_x == 1 && delta_y == 2) {
                 return true;
             }
-            knight_positions &= !(1 << pos);            
+            knight_positions &= !(1 << pos);
         }
-        
+
         // Can Pawn Attack?
-        let mut pawn_positions: u64 = (self.pawns >> 64 * is_black) as u64;
+        let mut pawn_positions: u64 = (self.pawns >> (64 * is_black)) as u64;
         while pawn_positions != 0 {
             // Check if delta_x absolute value value is 1
             // Check delta_y is -1 for black and +1 for white
@@ -229,24 +235,24 @@ impl Board {
             let index: i8 = (63 - pos) as i8;
             let x = index % 8;
             let y = index / 8;
-            let delta_x = target_x-x;
-            let delta_y = target_y-y;
+            let delta_x = target_x - x;
+            let delta_y = target_y - y;
             if delta_x.abs() == 1 {
-                if delta_y == (1-2*is_black as i8) {
+                if delta_y == 1 - 2 * (is_black as i8) {
                     return true;
                 }
             }
-            pawn_positions &= !(1 << pos);            
+            pawn_positions &= !(1 << pos);
         }
 
         // Can King Attack?
-        let king_position: u64 = (self.kings >> 64 * is_black) as u64;
+        let king_position: u64 = (self.kings >> (64 * is_black)) as u64;
         let pos: i8 = king_position.trailing_zeros() as i8;
         let index: i8 = (63 - pos) as i8;
         let x = index % 8;
         let y = index / 8;
-        let delta_x = (target_x-x).abs();
-        let delta_y = (target_y-y).abs();
+        let delta_x = (target_x - x).abs();
+        let delta_y = (target_y - y).abs();
         if delta_x <= 1 && delta_y <= 1 {
             return true;
         }
@@ -254,12 +260,12 @@ impl Board {
         return false;
     }
 
-    pub fn is_legal( &self ) -> bool {
-        let prev_was_black: u8 = if (self.metadata >> 8) & 1 == 1 { 1 } else { 0 };
-        let king_position: u64 = (self.kings >> 64 * prev_was_black) as u64;
+    pub fn is_legal(&self) -> bool {
+        let prev_was_black: u8 = if ((self.metadata >> 8) & 1) == 1 { 1 } else { 0 };
+        let king_position: u64 = (self.kings >> (64 * prev_was_black)) as u64;
         let pos: i8 = king_position.trailing_zeros() as i8;
         let index: u8 = (63 - pos) as u8;
-        return !self.can_attack(1-prev_was_black, index);
+        return !self.can_attack(1 - prev_was_black, index);
     }
 
     pub fn hash(&self) -> u64 {
@@ -324,10 +330,10 @@ impl Board {
         }
     }
 
-    pub fn from_fen( fen_string: &String ) -> Option<Board> {
-        let result = fen::BoardState::from_fen( fen_string );
+    pub fn from_fen(fen_string: &String) -> Option<Board> {
+        let result = fen::BoardState::from_fen(fen_string);
         match result {
-            Ok( fen_board ) => {
+            Ok(fen_board) => {
                 let mut board = Board {
                     rooks: 0,
                     knights: 0,
@@ -339,40 +345,52 @@ impl Board {
                     latest_move: 0,
                 };
                 for index in 0..64 {
-                    if let Some( piece ) = fen_board.pieces.get( index ).unwrap() {
-                        let piece_black = if piece.color == Color::Black {1} else {0};
-                        let offset = (63 - index) + piece_black*63;
+                    if let Some(piece) = fen_board.pieces.get(index).unwrap() {
+                        let piece_black = if piece.color == Color::Black { 1 } else { 0 };
+                        let offset = 63 - index + piece_black * 63;
                         match piece.kind {
-                            PieceKind::King => { board.kings |= 1 << offset }
-                            PieceKind::Queen => { board.queens |= 1 << offset }
-                            PieceKind::Rook => { board.rooks |= 1 << offset }
-                            PieceKind::Knight => { board.knights |= 1 << offset }
-                            PieceKind::Bishop => { board.bishops |= 1 << offset }
-                            PieceKind::Pawn => { board.pawns |= 1 << offset }
+                            PieceKind::King => {
+                                board.kings |= 1 << offset;
+                            }
+                            PieceKind::Queen => {
+                                board.queens |= 1 << offset;
+                            }
+                            PieceKind::Rook => {
+                                board.rooks |= 1 << offset;
+                            }
+                            PieceKind::Knight => {
+                                board.knights |= 1 << offset;
+                            }
+                            PieceKind::Bishop => {
+                                board.bishops |= 1 << offset;
+                            }
+                            PieceKind::Pawn => {
+                                board.pawns |= 1 << offset;
+                            }
                         }
                     }
                 }
-                let is_white_move = if fen_board.side_to_play == Color::White {1} else {0};
-                let white_ooo= if fen_board.white_can_ooo {1} else {0};
-                let white_oo= if fen_board.white_can_oo {1} else {0};
-                let black_ooo= if fen_board.black_can_ooo {1} else {0};
-                let black_oo= if fen_board.black_can_oo {1} else {0};
+                let is_white_move = if fen_board.side_to_play == Color::White { 1 } else { 0 };
+                let white_ooo = if fen_board.white_can_ooo { 1 } else { 0 };
+                let white_oo = if fen_board.white_can_oo { 1 } else { 0 };
+                let black_ooo = if fen_board.black_can_ooo { 1 } else { 0 };
+                let black_oo = if fen_board.black_can_oo { 1 } else { 0 };
 
                 board.metadata |= white_ooo << 0;
                 board.metadata |= white_oo << 1;
                 board.metadata |= black_ooo << 2;
                 board.metadata |= black_oo << 3;
-                if let Some( ep_square ) = fen_board.en_passant_square {
-                    board.metadata |= ( (ep_square as u32) & 7 ) << 4;
+                if let Some(ep_square) = fen_board.en_passant_square {
+                    board.metadata |= ((ep_square as u32) & 7) << 4;
                     board.metadata |= 1 << 7;
                 }
                 board.metadata |= is_white_move << 8;
-                board.metadata |= (fen_board.halfmove_clock as u32 & 127) << 9;
+                board.metadata |= ((fen_board.halfmove_clock as u32) & 127) << 9;
                 board.metadata |= (fen_board.fullmove_number as u32) << 16;
-                Some( board )
+                Some(board)
             }
-            Err( error ) => {
-                println!( "Error Parsing fen: {:?}", error );
+            Err(error) => {
+                println!("Error Parsing fen: {:?}", error);
                 None
             }
         }
@@ -391,10 +409,18 @@ pub fn uci_to_uint(uci: &str) -> u16 {
     // Handle promotion piece if present (uci[4])
     if uci.len() == 5 {
         match uci.chars().nth(4).unwrap() {
-            'Q' => result |= 4 << 12, // Queen promotion
-            'R' => result |= 5 << 12, // Rook promotion
-            'B' => result |= 6 << 12, // Bishop promotion
-            'N' => result |= 7 << 12, // Knight promotion
+            'Q' => {
+                result |= 4 << 12;
+            } // Queen promotion
+            'R' => {
+                result |= 5 << 12;
+            } // Rook promotion
+            'B' => {
+                result |= 6 << 12;
+            } // Bishop promotion
+            'N' => {
+                result |= 7 << 12;
+            } // Knight promotion
             _ => {}
         }
     }
@@ -433,17 +459,17 @@ impl LegalMoveVec {
     pub fn iter(&self) -> std::slice::Iter<Board> {
         self.data.iter()
     }
+
+    pub fn clear(&mut self) {
+        self.data.clear()
+    }
 }
 
 impl Iterator for LegalMoveVec {
     type Item = Board;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if !self.data.is_empty() {
-            Some(self.data.remove(0))
-        } else {
-            None
-        }
+        if !self.data.is_empty() { Some(self.data.remove(0)) } else { None }
     }
 }
 
@@ -457,16 +483,16 @@ mod tests {
     fn test_perft() {
         let file_path = "sample/default.json";
         let mut curr_board: Option<Board> = Option::None;
-        match Board::from_file( file_path ) {
-            Ok( board ) => {
-                curr_board = Some( board );
+        match Board::from_file(file_path) {
+            Ok(board) => {
+                curr_board = Some(board);
             }
-            Err( e ) => {
-                println!( "Error loading board: {}", e );
+            Err(e) => {
+                println!("Error loading board: {}", e);
             }
         }
 
-        let correct_num_nodes = [ 1, 20, 400, 8902, 197281, 4865609, 119060324 ];
+        let correct_num_nodes = [1, 20, 400, 8902, 197281, 4865609, 119060324];
         let mut curr_nodes = 0;
 
         if let Some(board) = curr_board {
@@ -481,10 +507,17 @@ mod tests {
                 println!("Depth: {}", max_depth);
                 println!("Number of Nodes Traversed: {}", num_nodes);
                 println!("Time Taken: {:.2} seconds", duration_secs);
-                println!("Nodes per second: {:.2}\n", num_nodes as f64 / duration_secs);
+                println!("Nodes per second: {:.2}\n", (num_nodes as f64) / duration_secs);
 
-                curr_nodes += correct_num_nodes[ max_depth as usize ];
-                assert_eq!( num_nodes, curr_nodes, "Correct Number of Nodes: {}, But Found: {}, for Depth: {}", num_nodes, curr_nodes, max_depth );
+                curr_nodes += correct_num_nodes[max_depth as usize];
+                assert_eq!(
+                    num_nodes,
+                    curr_nodes,
+                    "Correct Number of Nodes: {}, But Found: {}, for Depth: {}",
+                    num_nodes,
+                    curr_nodes,
+                    max_depth
+                );
             }
         } else {
             println!("Failed to load the board, exiting.");

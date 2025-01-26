@@ -6,3 +6,4 @@ pub mod queens;
 pub mod kings;
 pub mod pawns;
 pub mod utils;
+pub mod maps;
