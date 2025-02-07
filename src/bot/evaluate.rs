@@ -1,16 +1,16 @@
-use crate::base::defs::{ Board, PieceType };
+use crate::base::defs::{ Board, GlobalMap, PieceType };
 
 impl Board {
 
     pub fn get_piece_table(&self, piece_type: PieceType, is_end_game: bool) -> [[i32; 8]; 8] {
         match piece_type {
-            PieceType::Pawn => Self::PAWN_TABLE,
-            PieceType::Knight => Self::KNIGHT_TABLE,
-            PieceType::Bishop => Self::BISHOP_TABLE,
-            PieceType::Rook => Self::ROOK_TABLE,
-            PieceType::Queen => Self::QUEEN_TABLE,
+            PieceType::Pawn => GlobalMap::PAWN_TABLE,
+            PieceType::Knight => GlobalMap::KNIGHT_TABLE,
+            PieceType::Bishop => GlobalMap::BISHOP_TABLE,
+            PieceType::Rook => GlobalMap::ROOK_TABLE,
+            PieceType::Queen => GlobalMap::QUEEN_TABLE,
             PieceType::King => {
-                if !is_end_game { Self::KING_TABLE_START } else { Self::KING_TABLE_END }
+                if !is_end_game { GlobalMap::KING_TABLE_START } else { GlobalMap::KING_TABLE_END }
             }
         }
     }

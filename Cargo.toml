@@ -13,11 +13,11 @@ opt-level = 3
 
 [dependencies]
 serde = { version = "*", features = ["derive"] }
-serde_json = "*"
-rand = "*"
-reqwest = { version = "*", features = ["blocking"] }
+serde_json = "1.0.137"
+rand = "0.8.5"
 flate2 = "*"
 tar = "*"
 random_choice = "*"
 fen = "*"
 rayon = "*"
+once_cell = "1.20.2"

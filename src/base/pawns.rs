@@ -1,6 +1,6 @@
 use crate::base::defs::{ Board, PieceColour };
 
-use super::defs::LegalMoveVec;
+use super::defs::{GlobalMap, LegalMoveVec};
 
 impl Board {
     pub fn get_pawn_attack_bit_map(&self, pos: i8, is_black: u8) -> u64 {
@@ -12,7 +12,7 @@ impl Board {
             0 => PieceColour::White,
             _ => PieceColour::Any,
         };
-        let mut final_bit_map = Self::PAWN_MAP[is_black as usize][x as usize][y as usize];
+        let mut final_bit_map = GlobalMap::PAWN_MAP[is_black as usize][x as usize][y as usize];
         let friend_pieces = self.consolidated_piece_map(&curr_colour);
         final_bit_map &= !friend_pieces;
         return final_bit_map;
@@ -183,12 +183,13 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::defs::{ Board, BoardHash, LegalMoveVec };
+    use crate::base::defs::{ Board, BoardHash, GlobalMap, LegalMoveVec };
     use std::collections::HashSet;
     use std::time::Instant;
 
     #[test]
     fn test_generate_pawn_moves() {
+        GlobalMap::init();
         let file_path = "sample/test/pawns.json";
         match Board::from_file(file_path) {
             Ok(board) => {

@@ -58,7 +58,7 @@ pub struct Board {
     // Will not be Hashed
     // [ 1 bit is_pawn_promotion ] [ 2 bits for Q, R, B, N promotion ],
     // [ 6 bits for source ] [ 6 bits for destination ] = 15 bits :D
-    pub latest_move: u16
+    pub latest_move: u16,
 }
 
 #[derive(Debug)]
@@ -74,4 +74,9 @@ pub struct Search {
 #[derive(Debug)]
 pub struct LegalMoveVec {
     pub data: Vec<Board>,
+}
+
+#[derive(Debug)]
+pub struct GlobalMap {
+    // Contains Static Maps, defined in maps.rs
 }

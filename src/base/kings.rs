@@ -1,6 +1,6 @@
 use crate::base::defs::{ Board, CastleSide, PieceColour };
 
-use super::defs::LegalMoveVec;
+use super::defs::{GlobalMap, LegalMoveVec};
 
 impl Board {
     pub fn get_king_attack_bit_map(&self, pos: i8, is_black: u8) -> u64 {
@@ -12,7 +12,7 @@ impl Board {
             0 => PieceColour::White,
             _ => PieceColour::Any,
         };
-        let mut final_bit_map = Self::KING_MAP[x as usize][y as usize];
+        let mut final_bit_map = GlobalMap::KING_MAP[x as usize][y as usize];
         let friend_pieces = self.consolidated_piece_map(&curr_colour);
         final_bit_map &= !friend_pieces;
         return final_bit_map;
@@ -189,12 +189,13 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::defs::{ Board, BoardHash, LegalMoveVec };
+    use crate::base::defs::{ Board, BoardHash, GlobalMap, LegalMoveVec };
     use std::collections::HashSet;
     use std::time::Instant;
 
     #[test]
     fn test_generate_king_moves() {
+        GlobalMap::init();
         let file_path = "sample/test/kings.json";
         match Board::from_file(file_path) {
             Ok(board) => {
@@ -257,6 +258,7 @@ mod tests {
 
     #[test]
     fn test_generate_king_moves_2() {
+        GlobalMap::init();
         let file_path = "sample/test/kings2.json";
         match Board::from_file(file_path) {
             Ok(board) => {

@@ -1,41 +1,35 @@
-use mystic_bot::base::defs::{ Board, Search };
+use mystic_bot::base::defs::{ Board, GlobalMap, Search };
 use std::collections::HashMap;
 use std::time::{ Duration, Instant };
 use serde_json::Value;
 use std::io::{ self, Write };
 use std::fs::{ self, File };
 use std::path::Path;
-use reqwest::blocking::get;
 use flate2::read::GzDecoder;
 use tar::Archive;
 use std::sync::Arc;
 
+const COMPRESSED_OPENING_DB: &[u8] = include_bytes!("./maps/openings.tar.gz");
+
 fn read_opening_db() -> Result<Value, io::Error> {
     let output_dir = "./db";
-    let compressed_name = "openings.tar.gz";
-    let compressed_path = Path::new(output_dir).join(compressed_name);
-    let file_name = "openingDB.json";
-    let file_path = Path::new(output_dir).join(file_name);
+    let compressed_path = Path::new(output_dir).join("openings.tar.gz");
+    let file_path = Path::new(output_dir).join("openingDB.json");
 
     if !file_path.exists() {
-        println!("OpeningDB doesn't exist! Downloading...");
-        let file_id = "1TCGGGKb9dtn_GhQcOp94V4f9AvFt_E-c";
-        let url = format!("https://drive.google.com/uc?export=download&id={}", file_id);
-
-        let response = get(&url).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-        let content = response.bytes().map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        println!("OpeningDB doesn't exist! Extracting from embedded archive...");
 
         fs::create_dir_all(output_dir)?;
 
         let mut file = File::create(&compressed_path)?;
-        file.write_all(&content)?;
-        println!("Compressed file downloaded to: {:?}", compressed_path);
+        file.write_all(COMPRESSED_OPENING_DB)?;
+        println!("Compressed file written to: {:?}", compressed_path);
 
         let file = File::open(&compressed_path)?;
         let tar = GzDecoder::new(file);
         let mut archive = Archive::new(tar);
         archive.unpack(output_dir)?;
-        println!("Compressed file extracted to: {:?}", compressed_path);
+        println!("Compressed file extracted to: {:?}", output_dir);
 
         fs::remove_file(&compressed_path)?;
     }
@@ -98,7 +92,7 @@ fn main() {
             return;
         }
     };
-
+    GlobalMap::init();
     loop {
         println!("Mystic Bot Ready!\n\n");
         print!("MysticBotCli> ");

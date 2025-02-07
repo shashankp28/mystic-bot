@@ -7,6 +7,8 @@ use std::hash::{ Hash, Hasher };
 use std::io::Read;
 use std::path::Path;
 
+use super::defs::GlobalMap;
+
 impl Board {
     pub fn get_number_pieces(&self) -> u32 {
         let rooks_count = self.rooks.count_ones();
@@ -353,6 +355,10 @@ impl Board {
             }
         }
     }
+
+    pub fn default_global_map() -> *const GlobalMap {
+        std::ptr::null() // Default to a null pointer to avoid undefined behavior
+    }
 }
 
 pub fn uci_to_uint(uci: &str) -> u16 {
@@ -437,12 +443,13 @@ impl Iterator for LegalMoveVec {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::defs::Board;
+    use crate::base::defs::{Board, GlobalMap};
     use std::time::Instant;
     use crate::bot::search::generate_game_tree;
 
     #[test]
     fn test_perft() {
+        GlobalMap::init();
         let file_path = "sample/default.json";
         let mut curr_board: Option<Board> = Option::None;
         match Board::from_file(file_path) {

@@ -1,62 +1,26 @@
 use crate::base::defs::{ Board, PieceColour };
 
-use super::defs::LegalMoveVec;
+use super::defs::{ GlobalMap, LegalMoveVec };
 
 impl Board {
     pub fn get_rook_move_bit_map(&self, pos: i8, is_black: u8) -> u64 {
-        let mut final_dir_bitmap = 0;
-        let index: i8 = (63 - pos) as i8;
-        let x = index / 8;
-        let y = index % 8;
+        let index = 63 - pos;
+        // Get the bitmap for only the straight lines
+        let basic_rook_map = GlobalMap::straight_map(index as u8, 0);
         let curr_colour: PieceColour = match is_black {
-            1 => PieceColour::Black,
             0 => PieceColour::White,
+            1 => PieceColour::Black,
             _ => PieceColour::Any,
         };
-        let opp_colour: PieceColour = match is_black {
-            0 => PieceColour::Black,
-            1 => PieceColour::White,
-            _ => PieceColour::Any,
-        };
-        for direction in 0..4 {
-            let mut direction_bit_map = Self::STRAIGHT_RAY[direction][x as usize][y as usize];
-            let friend_pieces = self.consolidated_piece_map(&curr_colour) & direction_bit_map;
-            let opp_pieces = self.consolidated_piece_map(&opp_colour) & direction_bit_map;
-            let blocked_pieces = [friend_pieces, opp_pieces];
-            // Block Friend Piece lines
-            for (i, piece_map) in blocked_pieces.iter().enumerate() {
-                let mut temp_piece_map = *piece_map;
-                let mut closest_piece_pos = -1;
-                let mut closest_distance = 100;
+        let mut all_piece_map = self.consolidated_piece_map(&PieceColour::Any);
+        let curr_piece_map = self.consolidated_piece_map(&curr_colour);
+        all_piece_map &= !(1 << pos); // Remove the current rook
 
-                while temp_piece_map != 0 {
-                    let piece_pos = temp_piece_map.trailing_zeros() as i8;
-                    let piece_index: i8 = (63 - piece_pos) as i8;
-                    let piece_x = piece_index / 8;
-                    let piece_y = piece_index % 8;
-                    let dist = (piece_x - x).abs() + (piece_y - y).abs();
-                    if dist < closest_distance {
-                        closest_distance = dist;
-                        closest_piece_pos = piece_pos;
-                    }
-                    temp_piece_map &= !(1 << piece_pos);
-                }
-                if closest_piece_pos >= 0 {
-                    let piece_pos = closest_piece_pos;
-                    let piece_index: i8 = (63 - piece_pos) as i8;
-                    let piece_x = piece_index / 8;
-                    let piece_y = piece_index % 8;
-                    let mut piece_direction_bit_map =
-                        Self::STRAIGHT_RAY[direction][piece_x as usize][piece_y as usize];
-                    if i == 0 {
-                        piece_direction_bit_map |= 1 << piece_pos;
-                    }
-                    direction_bit_map &= !piece_direction_bit_map;
-                }
-            }
-            final_dir_bitmap |= direction_bit_map;
-        }
-        return final_dir_bitmap;
+        all_piece_map &= basic_rook_map; // Only get the pieces present on the diagonal
+        let mut final_rook_bitmap = GlobalMap::straight_map(index as u8, all_piece_map);
+
+        final_rook_bitmap &= !curr_piece_map; // Remove positions of current coloured piece
+        return final_rook_bitmap;
     }
 
     pub fn generate_rook_moves(&self) -> LegalMoveVec {
@@ -120,12 +84,13 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::defs::{ Board, BoardHash, LegalMoveVec };
+    use crate::base::defs::{ Board, BoardHash, GlobalMap, LegalMoveVec };
     use std::collections::HashSet;
     use std::time::Instant;
 
     #[test]
     fn test_generate_rook_moves() {
+        GlobalMap::init();
         let file_path = "sample/test/rooks.json";
         match Board::from_file(file_path) {
             Ok(board) => {
