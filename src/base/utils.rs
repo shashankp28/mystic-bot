@@ -260,15 +260,16 @@ impl Board {
 
     pub fn get_next_uci(&self) -> String {
         // Extract the information from the `latest_move` u16 field
-        let is_promotion = ((self.latest_move >> 15) & 1) != 0;
-        let promotion_type = (self.latest_move >> 13) & 0b11; // 2 bits for promotion type
+        let is_promotion = ((self.latest_move >> 14) & 1) != 0;
+        let promotion_type = (self.latest_move >> 12) & 0b11; // 2 bits for promotion type
         let source_square = (self.latest_move >> 6) & 0b111111; // 6 bits for source
         let destination_square = self.latest_move & 0b111111; // 6 bits for destination
 
         // Convert the source and destination squares to UCI coordinates
         let source_uci = Self::square_to_uci(source_square);
         let destination_uci = Self::square_to_uci(destination_square);
-
+        println!( "Promotion: {}, Type: {}", is_promotion, promotion_type );
+        println!( "Latest: {}", self.latest_move );
         // Handle promotion case
         if is_promotion {
             let promotion_char = match promotion_type {

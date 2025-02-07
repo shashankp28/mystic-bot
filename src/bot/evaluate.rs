@@ -1,7 +1,6 @@
 use crate::base::defs::{ Board, GlobalMap, PieceType };
 
 impl Board {
-
     pub fn get_piece_table(&self, piece_type: PieceType, is_end_game: bool) -> [[i32; 8]; 8] {
         match piece_type {
             PieceType::Pawn => GlobalMap::PAWN_TABLE,
@@ -40,7 +39,17 @@ impl Board {
         score
     }
 
-    pub fn evaluate(&self) -> f64 {
+    pub fn evaluate(&self, end : bool) -> f64 {
+        let is_black: u8 = if ((self.metadata >> 8) & 1) == 1 { 0 } else { 1 };
+        let king_positions: u64 = (self.kings >> (64 * is_black)) as u64;
+        if end {
+            if self.can_attack(1 - is_black, king_positions) {
+                return if is_black==1 { 100.0 } else { -100.0 };
+            } else {
+                return 0.0;
+            }
+        }
+
         let mut white_score = 0.0;
         white_score += ((self.queens as u64).count_ones() * 900) as f64;
         white_score += ((self.rooks as u64).count_ones() * 500) as f64;
@@ -130,6 +139,6 @@ impl Board {
             is_endgame
         );
 
-        white_score + black_score
+        (white_score + black_score) / 100.0
     }
 }

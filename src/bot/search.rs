@@ -1,9 +1,10 @@
 extern crate random_choice;
 use crate::base::defs::{ GlobalMap, LegalMoveVec };
-use crate::base::defs::{ Board, GameState, Search };
+use crate::base::defs::{ Board, Search };
 use crate::base::utils::uci_to_uint;
 use rand::thread_rng;
 use rand::Rng;
+use core::f64;
 use std::cmp::Ordering;
 use std::time::{ Duration, Instant };
 use serde_json::Value;
@@ -22,8 +23,8 @@ pub fn generate_game_tree(curr_board: Board, max_depth: u32, num_nodes: &mut u64
 impl Search {
     fn sort_legal_moves(&mut self, legal_moves: &mut LegalMoveVec, is_black: bool) {
         legal_moves.data.sort_by(|a, b| {
-            let a_evaluation = a.evaluate();
-            let b_evaluation = b.evaluate();
+            let a_evaluation = a.evaluate(false);
+            let b_evaluation = b.evaluate(false);
 
             let order = a_evaluation.partial_cmp(&b_evaluation).unwrap_or(Ordering::Equal);
 
@@ -35,53 +36,30 @@ impl Search {
         });
     }
 
-    /// principal variation search
+    /// Principal Variation Search (PVS) with Alpha-Beta Pruning
     ///
-    /// https://en.wikipedia.org/wiki/Principal_variation_search
+    /// Reference: https://en.wikipedia.org/wiki/Principal_variation_search
     pub fn pvs(
         &mut self,
         board: &Board,
         mut alpha: f64,
         beta: f64,
-        depth: u32,
-        maximizing_player: bool,
+        depth_remaining: u32,
         time_limit: Duration,
-        start_time: &Instant
+        start_time: &Instant,
+        colour: f64
     ) -> f64 {
-        let color = if maximizing_player { 1.0 } else { -1.0 };
-        //  If depth is 0 or time is up evaluate and return
-        if depth == 0 || Instant::now().duration_since(*start_time) > time_limit {
-            let eval = board.evaluate();
-            return eval * color;
-        }
-        // If checkmate or draw return appropriate score
+        // Check for terminal positions (checkmate or draw)
         let mut legal_moves = board.get_legal_moves();
-        let is_black: u8 = if ((board.metadata >> 8) & 1) == 1 { 0 } else { 1 };
-        let game_state = if legal_moves.len() == 0 {
-            let king_positions: u64 = (board.kings >> (64 * is_black)) as u64;
-            if board.can_attack(1 - is_black, king_positions) {
-                GameState::Checkmate
-            } else {
-                GameState::Stalemate
-            }
-        } else {
-            GameState::Playable
-        };
-        match game_state {
-            GameState::Checkmate => {
-                if is_black == 1 {
-                    return 100000.0 * (depth as f64) * color; // white won
-                } else {
-                    return -100000.0 * (depth as f64) * color;
-                }
-            }
-            GameState::Stalemate => {
-                return 0.0;
-            }
-            GameState::Playable => {}
+        if legal_moves.len() == 0 {
+            return board.evaluate(true) * (depth_remaining as f64) * colour;
         }
 
-        self.sort_legal_moves(&mut legal_moves, is_black == 1);
+        // If depth is zero or time runs out, evaluate the position
+        if depth_remaining == 0 || Instant::now().duration_since(*start_time) > time_limit {
+            return board.evaluate(false) * colour;
+        }
+        self.sort_legal_moves(&mut legal_moves, colour == -1.0);
 
         let mut is_first_child = true;
         let mut score: f64;
@@ -89,194 +67,135 @@ impl Search {
             self.num_nodes += 1;
 
             if is_first_child {
+                // Full window search for the first move
                 score = -self.pvs(
                     &next_board,
                     -beta,
                     -alpha,
-                    depth - 1,
-                    !maximizing_player,
+                    depth_remaining - 1,
                     time_limit,
-                    start_time
+                    start_time,
+                    -colour
                 );
             } else {
+                // Narrow window search for other moves (Principal Variation Search)
                 score = -self.pvs(
                     &next_board,
                     -alpha - 1.0,
                     -alpha,
-                    depth - 1,
-                    !maximizing_player,
+                    depth_remaining - 1,
                     time_limit,
-                    start_time
+                    start_time,
+                    -colour
                 );
-                if alpha < score && score < beta {
+
+                // If the narrow window search fails, do a full re-search
+                if score > alpha && score < beta {
                     score = -self.pvs(
                         &next_board,
                         -beta,
                         -alpha,
-                        depth - 1,
-                        !maximizing_player,
+                        depth_remaining - 1,
                         time_limit,
-                        start_time
+                        start_time,
+                        -colour
                     );
                 }
             }
-            alpha = alpha.max(score);
+
+            if score > alpha {
+                alpha = score;
+            }
+
             if alpha >= beta {
                 self.num_prunes += 1;
-                break;
+                break; // Beta cutoff
             }
+
             is_first_child = false;
         }
         alpha
     }
 
-    pub fn alpha_beta_pruning(
+    pub fn nega_max(
         &mut self,
         board: &Board,
         mut alpha: f64,
-        mut beta: f64,
-        depth: u32,
-        maximizing_player: bool,
+        beta: f64,
+        depth_remaining: u32,
         time_limit: Duration,
-        start_time: &Instant
-    ) -> f64 {
-        //  If depth is 0 or time is up evaluate and return
-        if depth == 0 || Instant::now().duration_since(*start_time) > time_limit {
-            let eval = board.evaluate();
-            return eval;
-        }
-
-        // If checkmate or draw return appropriate score
+        start_time: &Instant,
+        colour: f64
+    ) -> (Option<Board>, f64) {
+        // Check for terminal positions (checkmate or draw)
+        self.num_nodes += 1;
         let mut legal_moves = board.get_legal_moves();
-        let is_black: u8 = if ((board.metadata >> 8) & 1) == 1 { 0 } else { 1 };
-        let game_state = if legal_moves.len() == 0 {
-            let king_positions: u64 = (board.kings >> (64 * is_black)) as u64;
-            if board.can_attack(1 - is_black, king_positions) {
-                GameState::Checkmate
-            } else {
-                GameState::Stalemate
-            }
-        } else {
-            GameState::Playable
-        };
-        match game_state {
-            GameState::Checkmate => {
-                if is_black == 1 {
-                    return 100000.0 * (100.0 - ((self.max_depth - depth) as f64));
-                } else {
-                    return -100000.0 * (100.0 - ((self.max_depth - depth) as f64));
-                }
-            }
-            GameState::Stalemate => {
-                return 0.0;
-            }
-            GameState::Playable => {}
+        if legal_moves.len() == 0 {
+            return (Some(*board), board.evaluate(true) * (depth_remaining as f64) * colour);
         }
 
-        self.sort_legal_moves(&mut legal_moves, is_black == 1);
-
-        if maximizing_player {
-            let mut max_eval = f64::NEG_INFINITY;
-            for next_board in legal_moves {
-                self.num_nodes += 1;
-                let eval = self.alpha_beta_pruning(
-                    &next_board,
-                    alpha,
-                    beta,
-                    depth - 1,
-                    false,
-                    time_limit,
-                    start_time
-                );
-                max_eval = max_eval.max(eval);
-                alpha = alpha.max(eval);
-                if beta <= alpha {
-                    self.num_prunes += depth;
-                    break;
-                }
-            }
-            max_eval
-        } else {
-            let mut min_eval = f64::INFINITY;
-            for next_board in legal_moves {
-                self.num_nodes += 1;
-                let eval = self.alpha_beta_pruning(
-                    &next_board,
-                    alpha,
-                    beta,
-                    depth - 1,
-                    true,
-                    time_limit,
-                    start_time
-                );
-                min_eval = min_eval.min(eval);
-                beta = beta.min(eval);
-                if beta <= alpha {
-                    self.num_prunes += depth;
-                    break;
-                }
-            }
-            min_eval
+        // If depth is zero or time runs out, evaluate the position
+        if depth_remaining == 0 || Instant::now().duration_since(*start_time) > time_limit {
+            return (Some(*board), board.evaluate(false) * colour);
         }
+        self.sort_legal_moves(&mut legal_moves, colour == -1.0);
+
+        let mut best_score = f64::NEG_INFINITY;
+        let mut best_move: Option<Board> = None;
+        for new_board in legal_moves {
+            let (_, mut score) = self.nega_max(
+                &new_board,
+                -beta,
+                -alpha,
+                depth_remaining - 1,
+                time_limit,
+                start_time,
+                -colour
+            );
+            score *= -1.0;
+            if score > best_score {
+                best_score = score;
+                best_move = Some(new_board);
+            }
+
+            alpha = alpha.max(score);
+            if alpha >= beta {
+                self.num_prunes += 1;
+                break;
+            }
+        }
+        (best_move, best_score)
     }
 
+    /// Returns the best move using iterative deepening and PVS
     pub fn best_next_board(&mut self, time_limit: Duration) -> Option<Board> {
         let start_time = Instant::now();
-        let is_black: i32 = if ((self.board.metadata >> 8) & 1) == 1 { 0 } else { 1 };
+        let is_black = (((self.board.metadata >> 8) & 1) == 1) as i32;
+        let colour = if is_black == 1 { -1.0 } else { 1.0 };
 
         let mut best_move: Option<Board> = None;
         let mut best_eval = if is_black == 0 { f64::NEG_INFINITY } else { f64::INFINITY };
-
-        let legal_moves = self.board.get_legal_moves();
-
-        // Depth search loop
+        // Iterative deepening loop
         while self.max_depth <= 15 && Instant::now().duration_since(start_time) < time_limit {
-            let mut local_best_move: Option<Board> = None;
-            let mut local_best_eval = if is_black == 0 { f64::NEG_INFINITY } else { f64::INFINITY };
-
-            // Iterate over legal moves
-            for next_board in legal_moves.iter() {
-                self.num_nodes += 1;
-
-                let color = if is_black == 1 { 1.0 } else { -1.0 };
-                let eval =
-                    self.pvs(
-                        next_board,
-                        f64::NEG_INFINITY,
-                        f64::INFINITY,
-                        self.max_depth - 1,
-                        is_black == 1,
-                        time_limit,
-                        &start_time
-                    ) * color;
-
-                // // Perform alpha-beta pruning
-                // let eval = self.alpha_beta_pruning(
-                //     next_board,
-                //     f64::NEG_INFINITY,
-                //     f64::INFINITY,
-                //     self.max_depth - 1,
-                //     is_black == 1,
-                //     time_limit,
-                //     &start_time,
-                // );
-
-                // Update local best move and eval
-                if is_black == 0 && eval > local_best_eval {
-                    local_best_eval = eval;
-                    local_best_move = Some(next_board.clone());
-                } else if is_black == 1 && eval < local_best_eval {
-                    local_best_eval = eval;
-                    local_best_move = Some(next_board.clone());
-                }
-            }
-
-            // Stop if time limit is exceeded
+            let alpha = f64::NEG_INFINITY;
+            let beta: f64 = f64::INFINITY;
+            let board = self.board.clone();
+            let (local_best_move, mut local_best_eval) = self.nega_max(
+                &board,
+                alpha,
+                beta,
+                self.max_depth,
+                time_limit,
+                &start_time,
+                -colour
+            );
+            local_best_eval *= -1.0 * colour;
+            // Stop if time limit is exceeded (don't update half exploration)
             if Instant::now().duration_since(start_time) > time_limit {
                 break;
             }
 
-            // Update global best move as Higher depth ==> Better result
+            // Update global best move (deeper searches provide better results)
             best_eval = local_best_eval;
             best_move = local_best_move;
 
@@ -289,13 +208,19 @@ impl Search {
         // Output evaluation details
         println!("Evaluation Function: {}", best_eval);
         println!("Number of Nodes Explored: {}", self.num_nodes);
-        println!("Depth Explored: {}", self.max_depth - 1); // Depth adjusted to last successful iteration
+        println!("Depth Explored: {}", self.max_depth - 1);
         println!("Number of Nodes Pruned: {}", self.num_prunes);
-        println!("Time Taken: {:?}", elapsed_time.as_millis());
+        println!("Time Taken: {:?} ms", elapsed_time.as_millis());
         println!(
             "Explored Nodes per second: {:.2}",
             (self.num_nodes as f64) / elapsed_time.as_secs_f64()
         );
+        match best_move {
+            Some(board) => {
+                println!("Best Move: {}", board.get_next_uci());
+            }
+            None => {}
+        }
 
         best_move
     }
@@ -386,7 +311,7 @@ mod tests {
                     max_depth: 3,
                     num_prunes: 0,
                 };
-                search.best_next_board(Duration::from_millis(10000));
+                search.best_next_board(Duration::from_millis(5000));
             }
             None => {
                 println!("Error loading board: {}", fen);

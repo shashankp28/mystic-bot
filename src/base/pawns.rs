@@ -36,8 +36,8 @@ impl Board {
             new_board.remove_piece(index as u8);
             new_board.queens |= 1 << (64 * is_black + pos);
             new_board.latest_move |= 4 << 12; // 1 00
-
             legal_boards.push(&mut new_board);
+
             let mut new_board = self.clone();
             new_board.remove_piece(index as u8);
             new_board.rooks |= 1 << (64 * is_black + pos);
