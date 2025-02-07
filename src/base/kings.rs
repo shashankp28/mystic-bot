@@ -196,9 +196,9 @@ mod tests {
     #[test]
     fn test_generate_king_moves() {
         GlobalMap::init();
-        let file_path = "sample/test/kings.json";
-        match Board::from_file(file_path) {
-            Ok(board) => {
+        let fen = String::from("r3k2r/ppp2ppp/2n2n2/2bppbq1/2BPPBQ1/2N2N2/PPP1KPPP/R6R b kq - 7 8");
+        match Board::from_fen(&fen) {
+            Some(board) => {
                 println!("Successfully loaded board: {:?}", board);
                 let mut legal_boards: LegalMoveVec = LegalMoveVec::new();
                 let iterations = 1000000;
@@ -250,8 +250,8 @@ mod tests {
                     );
                 }
             }
-            Err(e) => {
-                println!("Error loading board: {}", e);
+            None => {
+                panic!("Error loading board: {}", fen);
             }
         }
     }
@@ -259,9 +259,9 @@ mod tests {
     #[test]
     fn test_generate_king_moves_2() {
         GlobalMap::init();
-        let file_path = "sample/test/kings2.json";
-        match Board::from_file(file_path) {
-            Ok(board) => {
+        let fen = String::from("r3k2r/4q2p/2Rp1ppn/1pbBp3/3nPBb1/3P1PPN/1PP1Q2P/4K2R b Kkq - 1 17");
+        match Board::from_fen(&fen) {
+            Some(board) => {
                 println!("Successfully loaded board: {:?}", board);
                 let mut legal_boards: LegalMoveVec = LegalMoveVec::new();
                 let iterations = 1000000;
@@ -309,8 +309,8 @@ mod tests {
                     );
                 }
             }
-            Err(e) => {
-                println!("Error loading board: {}", e);
+            None => {
+                panic!("Error loading board: {}", fen);
             }
         }
     }

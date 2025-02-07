@@ -84,9 +84,9 @@ mod tests {
     #[test]
     fn test_generate_bishop_moves() {
         GlobalMap::init();
-        let file_path = "sample/test/bishops.json";
-        match Board::from_file(file_path) {
-            Ok(board) => {
+        let fen = String::from("1r3b1r/pppn4/7p/2k3p1/P1b1PpBP/5P2/8/R2NKR2 b - - 2 31");
+        match Board::from_fen(&fen) {
+            Some(board) => {
                 println!("Successfully loaded board: {:?}", board);
                 let mut legal_boards: LegalMoveVec = LegalMoveVec::new();
                 let iterations = 1000000;
@@ -139,8 +139,8 @@ mod tests {
                     );
                 }
             }
-            Err(e) => {
-                println!("Error loading board: {}", e);
+            None => {
+                panic!("Error loading board: {}", fen);
             }
         }
     }

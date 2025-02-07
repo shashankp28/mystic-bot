@@ -76,9 +76,9 @@ mod tests {
     #[test]
     fn test_generate_knight_moves() {
         GlobalMap::init();
-        let file_path = "sample/test/knights.json";
-        match Board::from_file(file_path) {
-            Ok(board) => {
+        let fen = String::from("r1bqkb1r/pppp1ppp/8/2N1pN2/4P3/1n4nP/PPPP1PP1/R1BQKB1R b KQkq - 0 8");
+        match Board::from_fen(&fen) {
+            Some(board) => {
                 println!("Successfully loaded board: {:?}", board);
                 let mut legal_boards: LegalMoveVec = LegalMoveVec::new();
                 let iterations = 1000000;
@@ -131,8 +131,8 @@ mod tests {
                     );
                 }
             }
-            Err(e) => {
-                println!("Error loading board: {}", e);
+            None => {
+                panic!("Error loading board: {}", fen);
             }
         }
     }

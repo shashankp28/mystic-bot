@@ -1,45 +1,7 @@
-use mystic_bot::base::defs::{ Board, GlobalMap, Search };
-use std::collections::HashMap;
-use std::time::{ Duration, Instant };
-use serde_json::Value;
+use std::time::Duration;
 use std::io::{ self, Write };
-use std::fs::{ self, File };
-use std::path::Path;
-use flate2::read::GzDecoder;
-use tar::Archive;
-use std::sync::Arc;
-
-const COMPRESSED_OPENING_DB: &[u8] = include_bytes!("./maps/openings.tar.gz");
-
-fn read_opening_db() -> Result<Value, io::Error> {
-    let output_dir = "./db";
-    let compressed_path = Path::new(output_dir).join("openings.tar.gz");
-    let file_path = Path::new(output_dir).join("openingDB.json");
-
-    if !file_path.exists() {
-        println!("OpeningDB doesn't exist! Extracting from embedded archive...");
-
-        fs::create_dir_all(output_dir)?;
-
-        let mut file = File::create(&compressed_path)?;
-        file.write_all(COMPRESSED_OPENING_DB)?;
-        println!("Compressed file written to: {:?}", compressed_path);
-
-        let file = File::open(&compressed_path)?;
-        let tar = GzDecoder::new(file);
-        let mut archive = Archive::new(tar);
-        archive.unpack(output_dir)?;
-        println!("Compressed file extracted to: {:?}", output_dir);
-
-        fs::remove_file(&compressed_path)?;
-    }
-
-    let file_content = fs::read_to_string(&file_path)?;
-    let json_data: Value = serde_json
-        ::from_str(&file_content)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-    Ok(json_data)
-}
+use std::collections::HashMap;
+use mystic_bot::base::defs::{ Board, GlobalMap, Search };
 
 fn main() {
     let logo =
@@ -84,14 +46,6 @@ fn main() {
 
     println!("{}", logo);
 
-    // Initialize the opening database
-    let opening_db = match read_opening_db() {
-        Ok(data) => Arc::new(data),
-        Err(e) => {
-            eprintln!("Error initializing opening database: {}", e);
-            return;
-        }
-    };
     GlobalMap::init();
     loop {
         println!("Mystic Bot Ready!\n\n");
@@ -155,7 +109,6 @@ fn main() {
                     let mut search = Search {
                         board,
                         memory,
-                        opening_db: Arc::clone(&opening_db),
                         num_nodes: 0,
                         max_depth: 3,
                         num_prunes: 0,
@@ -166,8 +119,7 @@ fn main() {
                         println!("Next move found in opening database");
                         println!("\nBest next move: {}", next.get_next_uci());
                     } else {
-                        let start_time = Instant::now();
-                        let next_board = search.best_next_board(time_limit, &start_time);
+                        let next_board = search.best_next_board(time_limit);
 
                         if let Some(next) = next_board {
                             println!("\nBest next move: {}", next.get_next_uci());

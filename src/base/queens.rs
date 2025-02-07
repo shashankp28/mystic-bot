@@ -72,9 +72,9 @@ mod tests {
     #[test]
     fn test_generate_queen_moves() {
         GlobalMap::init();
-        let file_path = "sample/test/queens.json";
-        match Board::from_file(file_path) {
-            Ok(board) => {
+        let fen = String::from("1n2kbnr/Rbq5/7p/4pPp1/4P3/3q3P/8/2BQKBNq b k - 0 19");
+        match Board::from_fen(&fen) {
+            Some(board) => {
                 println!("Successfully loaded board: {:?}", board);
                 let mut legal_boards: LegalMoveVec = LegalMoveVec::new();
                 let iterations = 1000000;
@@ -135,8 +135,8 @@ mod tests {
                     );
                 }
             }
-            Err(e) => {
-                println!("Error loading board: {}", e);
+            None => {
+                panic!("Error loading board: {}", fen);
             }
         }
     }

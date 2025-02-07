@@ -1,11 +1,11 @@
-use crate::base::defs::{ Board, CastleSide, PieceColour, LegalMoveVec };
-use fen::{ Color, PieceKind };
-use serde_json::to_writer_pretty;
 use std::fs::File;
-use std::hash::DefaultHasher;
-use std::hash::{ Hash, Hasher };
 use std::io::Read;
 use std::path::Path;
+use std::hash::DefaultHasher;
+use fen::{ Color, PieceKind };
+use std::hash::{ Hash, Hasher };
+use serde_json::to_writer_pretty;
+use crate::base::defs::{ Board, CastleSide, PieceColour, LegalMoveVec };
 
 use super::defs::GlobalMap;
 
@@ -443,21 +443,21 @@ impl Iterator for LegalMoveVec {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::defs::{Board, GlobalMap};
+    use crate::base::defs::{ Board, GlobalMap };
     use std::time::Instant;
     use crate::bot::search::generate_game_tree;
 
     #[test]
     fn test_perft() {
         GlobalMap::init();
-        let file_path = "sample/default.json";
+        let fen = String::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         let mut curr_board: Option<Board> = Option::None;
-        match Board::from_file(file_path) {
-            Ok(board) => {
+        match Board::from_fen(&fen) {
+            Some(board) => {
                 curr_board = Some(board);
             }
-            Err(e) => {
-                println!("Error loading board: {}", e);
+            None => {
+                println!("Error loading board: {}", fen);
             }
         }
 
@@ -489,7 +489,7 @@ mod tests {
                 );
             }
         } else {
-            println!("Failed to load the board, exiting.");
+            panic!("Failed to load the board, exiting.");
         }
     }
 }

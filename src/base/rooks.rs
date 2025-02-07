@@ -91,9 +91,9 @@ mod tests {
     #[test]
     fn test_generate_rook_moves() {
         GlobalMap::init();
-        let file_path = "sample/test/rooks.json";
-        match Board::from_file(file_path) {
-            Ok(board) => {
+        let fen = String::from("rnbqkbnr/1p6/2p2p1p/pB1p4/P2pPB1p/2NQ1N2/1PP2PP1/R3K2R w KQkq - 0 10");
+        match Board::from_fen(&fen) {
+            Some(board) => {
                 println!("Successfully loaded board: {:?}", board);
                 let mut legal_boards: LegalMoveVec = LegalMoveVec::new();
                 let iterations = 1000000;
@@ -147,8 +147,8 @@ mod tests {
                     );
                 }
             }
-            Err(e) => {
-                println!("Error loading board: {}", e);
+            None => {
+                panic!("Error loading board: {}", fen);
             }
         }
     }

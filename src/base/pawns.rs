@@ -1,6 +1,6 @@
 use crate::base::defs::{ Board, PieceColour };
 
-use super::defs::{GlobalMap, LegalMoveVec};
+use super::defs::{ GlobalMap, LegalMoveVec };
 
 impl Board {
     pub fn get_pawn_attack_bit_map(&self, pos: i8, is_black: u8) -> u64 {
@@ -190,9 +190,11 @@ mod tests {
     #[test]
     fn test_generate_pawn_moves() {
         GlobalMap::init();
-        let file_path = "sample/test/pawns.json";
-        match Board::from_file(file_path) {
-            Ok(board) => {
+        let fen = String::from(
+            "rn2k1nr/p2bbpP1/6q1/Pp1pp1Pp/2pNP3/7P/1PPP4/RNBQKB1R w KQkq b6 0 13"
+        );
+        match Board::from_fen(&fen) {
+            Some(board) => {
                 println!("Successfully loaded board: {:?}", board);
                 let mut legal_boards: LegalMoveVec = LegalMoveVec::new();
                 let iterations = 1000000;
@@ -247,8 +249,8 @@ mod tests {
                     );
                 }
             }
-            Err(e) => {
-                println!("Error loading board: {}", e);
+            None => {
+                panic!("Error loading board: {}", fen);
             }
         }
     }
