@@ -255,10 +255,10 @@ impl Search {
                 //     next_board,
                 //     f64::NEG_INFINITY,
                 //     f64::INFINITY,
-                //     depth - 1,
+                //     self.max_depth - 1,
                 //     is_black == 1,
                 //     time_limit,
-                //     start_time,
+                //     &start_time,
                 // );
 
                 // Update local best move and eval
@@ -303,9 +303,6 @@ impl Search {
     pub fn search_opening_db(&self) -> Option<Board> {
         // Check if board.hash() exists in the opening_db
         let board_hash = self.board.hash();
-        // let is_black: u8 = if (self.board.metadata >> 8) & 1 == 1 { 0 } else { 1 };
-        // let curr_colour = if is_black==1 { "black" } else { "white" };
-        // let opp_colour = if is_black==1 { "white" } else { "black" };
         if let Some(entry) = GlobalMap::opening_db().get(&board_hash.to_string()) {
             println!("Found hash in opening database: {:?}", board_hash);
 
@@ -316,16 +313,10 @@ impl Search {
 
                 for (move_str, stats) in moves {
                     if let Value::Object(stats_map) = stats {
-                        // let win = stats_map.get(curr_colour).and_then(|v| v.as_f64()).unwrap_or(0.0);
-                        // let lose = stats_map.get(opp_colour).and_then(|v| v.as_f64()).unwrap_or(0.0);
                         let total = stats_map
                             .get("total")
                             .and_then(|v| v.as_f64())
                             .unwrap_or(1.0);
-                        // let draw = total - ( win.abs() + lose.abs() );
-
-                        // let mut score = ( win.abs() + draw.abs()/2.0 ) / total;
-                        // if score == 0.0 { score += 0.01 }; // Even though bad, maybe good who knows?
                         db_moves.push(move_str.clone());
                         scores.push(total);
                     }
@@ -395,7 +386,7 @@ mod tests {
                     max_depth: 3,
                     num_prunes: 0,
                 };
-                search.best_next_board(Duration::from_millis(5000));
+                search.best_next_board(Duration::from_millis(10000));
             }
             None => {
                 println!("Error loading board: {}", fen);
