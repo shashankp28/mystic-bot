@@ -10,18 +10,8 @@ use std::time::{ Duration, Instant };
 use serde_json::Value;
 use self::random_choice::random_choice;
 
-pub fn generate_game_tree(curr_board: Board, max_depth: u32, num_nodes: &mut u64) {
-    *num_nodes += 1;
-    if max_depth == 0 {
-        return;
-    }
-    for board in curr_board.get_legal_moves() {
-        generate_game_tree(board, max_depth - 1, num_nodes);
-    }
-}
-
 impl Search {
-    fn sort_legal_moves(&mut self, legal_moves: &mut LegalMoveVec, is_black: bool) {
+    pub fn sort_legal_moves(&mut self, legal_moves: &mut LegalMoveVec, is_black: bool) {
         legal_moves.data.sort_by(|a, b| {
             let a_evaluation = a.evaluate(false);
             let b_evaluation = b.evaluate(false);
@@ -36,140 +26,9 @@ impl Search {
         });
     }
 
-    /// Principal Variation Search (PVS) with Alpha-Beta Pruning
-    ///
-    /// Reference: https://en.wikipedia.org/wiki/Principal_variation_search
-    pub fn pvs(
-        &mut self,
-        board: &Board,
-        mut alpha: f64,
-        beta: f64,
-        depth_remaining: u32,
-        time_limit: Duration,
-        start_time: &Instant,
-        colour: f64
-    ) -> f64 {
-        // Check for terminal positions (checkmate or draw)
-        let mut legal_moves = board.get_legal_moves();
-        if legal_moves.len() == 0 {
-            return board.evaluate(true) * (depth_remaining as f64) * colour;
-        }
-
-        // If depth is zero or time runs out, evaluate the position
-        if depth_remaining == 0 || Instant::now().duration_since(*start_time) > time_limit {
-            return board.evaluate(false) * colour;
-        }
-        self.sort_legal_moves(&mut legal_moves, colour == -1.0);
-
-        let mut is_first_child = true;
-        let mut score: f64;
-        for next_board in legal_moves {
-            self.num_nodes += 1;
-
-            if is_first_child {
-                // Full window search for the first move
-                score = -self.pvs(
-                    &next_board,
-                    -beta,
-                    -alpha,
-                    depth_remaining - 1,
-                    time_limit,
-                    start_time,
-                    -colour
-                );
-            } else {
-                // Narrow window search for other moves (Principal Variation Search)
-                score = -self.pvs(
-                    &next_board,
-                    -alpha - 1.0,
-                    -alpha,
-                    depth_remaining - 1,
-                    time_limit,
-                    start_time,
-                    -colour
-                );
-
-                // If the narrow window search fails, do a full re-search
-                if score > alpha && score < beta {
-                    score = -self.pvs(
-                        &next_board,
-                        -beta,
-                        -alpha,
-                        depth_remaining - 1,
-                        time_limit,
-                        start_time,
-                        -colour
-                    );
-                }
-            }
-
-            if score > alpha {
-                alpha = score;
-            }
-
-            if alpha >= beta {
-                self.num_prunes += 1;
-                break; // Beta cutoff
-            }
-
-            is_first_child = false;
-        }
-        alpha
-    }
-
-    pub fn nega_max(
-        &mut self,
-        board: &Board,
-        mut alpha: f64,
-        beta: f64,
-        depth_remaining: u32,
-        time_limit: Duration,
-        start_time: &Instant,
-        colour: f64
-    ) -> (Option<Board>, f64) {
-        // Check for terminal positions (checkmate or draw)
-        self.num_nodes += 1;
-        let mut legal_moves = board.get_legal_moves();
-        if legal_moves.len() == 0 {
-            return (Some(*board), board.evaluate(true) * (depth_remaining as f64) * colour);
-        }
-
-        // If depth is zero or time runs out, evaluate the position
-        if depth_remaining == 0 || Instant::now().duration_since(*start_time) > time_limit {
-            return (Some(*board), board.evaluate(false) * colour);
-        }
-        self.sort_legal_moves(&mut legal_moves, colour == -1.0);
-
-        let mut best_score = f64::NEG_INFINITY;
-        let mut best_move: Option<Board> = None;
-        for new_board in legal_moves {
-            let (_, mut score) = self.nega_max(
-                &new_board,
-                -beta,
-                -alpha,
-                depth_remaining - 1,
-                time_limit,
-                start_time,
-                -colour
-            );
-            score *= -1.0;
-            if score > best_score {
-                best_score = score;
-                best_move = Some(new_board);
-            }
-
-            alpha = alpha.max(score);
-            if alpha >= beta {
-                self.num_prunes += 1;
-                break;
-            }
-        }
-        (best_move, best_score)
-    }
-
     /// Returns the best move using iterative deepening and PVS
     pub fn best_next_board(&mut self, time_limit: Duration) -> Option<Board> {
-        let start_time = Instant::now();
+        let start_time: Instant = Instant::now();
         let is_black = (((self.board.metadata >> 8) & 1) == 1) as i32;
         let colour = if is_black == 1 { -1.0 } else { 1.0 };
 
@@ -177,13 +36,11 @@ impl Search {
         let mut best_eval = if is_black == 0 { f64::NEG_INFINITY } else { f64::INFINITY };
         // Iterative deepening loop
         while self.max_depth <= 15 && Instant::now().duration_since(start_time) < time_limit {
-            let alpha = f64::NEG_INFINITY;
-            let beta: f64 = f64::INFINITY;
+            // let alpha = f64::NEG_INFINITY;
+            // let beta: f64 = f64::INFINITY;
             let board = self.board.clone();
-            let (local_best_move, mut local_best_eval) = self.nega_max(
+            let (local_best_move, mut local_best_eval) = self.minimax(
                 &board,
-                alpha,
-                beta,
                 self.max_depth,
                 time_limit,
                 &start_time,

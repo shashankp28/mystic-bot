@@ -268,8 +268,6 @@ impl Board {
         // Convert the source and destination squares to UCI coordinates
         let source_uci = Self::square_to_uci(source_square);
         let destination_uci = Self::square_to_uci(destination_square);
-        println!( "Promotion: {}, Type: {}", is_promotion, promotion_type );
-        println!( "Latest: {}", self.latest_move );
         // Handle promotion case
         if is_promotion {
             let promotion_char = match promotion_type {
@@ -446,7 +444,16 @@ impl Iterator for LegalMoveVec {
 mod tests {
     use crate::base::defs::{ Board, GlobalMap };
     use std::time::Instant;
-    use crate::bot::search::generate_game_tree;
+    
+    pub fn generate_game_tree(curr_board: Board, max_depth: u32, num_nodes: &mut u64) {
+        *num_nodes += 1;
+        if max_depth == 0 {
+            return;
+        }
+        for board in curr_board.get_legal_moves() {
+            generate_game_tree(board, max_depth - 1, num_nodes);
+        }
+    }
 
     #[test]
     fn test_perft() {

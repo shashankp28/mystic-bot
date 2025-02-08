@@ -39,12 +39,12 @@ impl Board {
         score
     }
 
-    pub fn evaluate(&self, end : bool) -> f64 {
+    pub fn evaluate(&self, end: bool) -> f64 {
         let is_black: u8 = if ((self.metadata >> 8) & 1) == 1 { 0 } else { 1 };
         let king_positions: u64 = (self.kings >> (64 * is_black)) as u64;
         if end {
             if self.can_attack(1 - is_black, king_positions) {
-                return if is_black==1 { 100.0 } else { -100.0 };
+                return if is_black == 1 { 100.0 } else { -100.0 };
             } else {
                 return 0.0;
             }
