@@ -1,5 +1,5 @@
-use std::time::{Duration, Instant};
-use crate::base::defs::{Board, Search};
+use std::time::{ Duration, Instant };
+use crate::base::defs::{ Board, Search };
 
 impl Search {
     /// Principal Variation Search (PVS) with Alpha-Beta Pruning
@@ -14,27 +14,28 @@ impl Search {
         time_limit: Duration,
         start_time: &Instant,
         colour: f64
-    ) -> f64 {
+    ) -> (Option<Board>, f64) {
         // Check for terminal positions (checkmate or draw)
         let mut legal_moves = board.get_legal_moves();
         if legal_moves.len() == 0 {
-            return board.evaluate(true) * (depth_remaining as f64) * colour;
+            return (None, board.evaluate(true) * (depth_remaining as f64) * colour);
         }
 
         // If depth is zero or time runs out, evaluate the position
         if depth_remaining == 0 || Instant::now().duration_since(*start_time) > time_limit {
-            return board.evaluate(false) * colour;
+            return (None, board.evaluate(false) * colour);
         }
         self.sort_legal_moves(&mut legal_moves, colour == -1.0);
 
         let mut is_first_child = true;
         let mut score: f64;
+        let mut best_move: Option<Board> = None;
         for next_board in legal_moves {
             self.num_nodes += 1;
 
             if is_first_child {
                 // Full window search for the first move
-                score = -self.pvs(
+                (_, score) = self.pvs(
                     &next_board,
                     -beta,
                     -alpha,
@@ -43,9 +44,10 @@ impl Search {
                     start_time,
                     -colour
                 );
+                score *= -1.0;
             } else {
                 // Narrow window search for other moves (Principal Variation Search)
-                score = -self.pvs(
+                (_, score) = self.pvs(
                     &next_board,
                     -alpha - 1.0,
                     -alpha,
@@ -54,10 +56,11 @@ impl Search {
                     start_time,
                     -colour
                 );
+                score *= -1.0;
 
                 // If the narrow window search fails, do a full re-search
                 if score > alpha && score < beta {
-                    score = -self.pvs(
+                    (_, score) = self.pvs(
                         &next_board,
                         -beta,
                         -alpha,
@@ -66,11 +69,13 @@ impl Search {
                         start_time,
                         -colour
                     );
+                    score *= -1.0;
                 }
             }
 
             if score > alpha {
                 alpha = score;
+                best_move = Some(next_board);
             }
 
             if alpha >= beta {
@@ -80,6 +85,6 @@ impl Search {
 
             is_first_child = false;
         }
-        alpha
+        (best_move, alpha)
     }
 }

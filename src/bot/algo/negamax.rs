@@ -16,12 +16,12 @@ impl Search {
         self.num_nodes += 1;
         let mut legal_moves = board.get_legal_moves();
         if legal_moves.len() == 0 {
-            return (Some(*board), board.evaluate(true) * (depth_remaining as f64) * colour);
+            return (None, board.evaluate(true) * (depth_remaining as f64) * colour);
         }
 
         // If depth is zero or time runs out, evaluate the position
         if depth_remaining == 0 || Instant::now().duration_since(*start_time) > time_limit {
-            return (Some(*board), board.evaluate(false) * colour);
+            return (None, board.evaluate(false) * colour);
         }
         self.sort_legal_moves(&mut legal_moves, colour == -1.0);
 

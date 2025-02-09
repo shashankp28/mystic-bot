@@ -36,17 +36,41 @@ impl Search {
         let mut best_eval = if is_black == 0 { f64::NEG_INFINITY } else { f64::INFINITY };
         // Iterative deepening loop
         while self.max_depth <= 15 && Instant::now().duration_since(start_time) < time_limit {
-            // let alpha = f64::NEG_INFINITY;
-            // let beta: f64 = f64::INFINITY;
             let board = self.board.clone();
-            let (local_best_move, mut local_best_eval) = self.minimax(
+
+            // Mini-Max Algorithm
+            // let (local_best_move, mut local_best_eval) = self.minimax(
+            //     &board,
+            //     self.max_depth,
+            //     time_limit,
+            //     &start_time,
+            //     -colour
+            // );
+
+            // Negamax algorithm (Alpha-Beta Pruning)
+            let (local_best_move, mut local_best_eval) = self.nega_max(
                 &board,
+                f64::NEG_INFINITY,
+                f64::INFINITY,
                 self.max_depth,
                 time_limit,
                 &start_time,
                 -colour
             );
             local_best_eval *= -1.0 * colour;
+
+            // PVS algorithm
+            // let (local_best_move, mut local_best_eval) = self.pvs(
+            //     &board,
+            //     f64::NEG_INFINITY,
+            //     f64::INFINITY,
+            //     self.max_depth,
+            //     time_limit,
+            //     &start_time,
+            //     -colour
+            // );
+            // local_best_eval *= -1.0 * colour;
+
             // Stop if time limit is exceeded (don't update half exploration)
             if Instant::now().duration_since(start_time) > time_limit {
                 break;
