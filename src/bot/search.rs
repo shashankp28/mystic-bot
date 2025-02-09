@@ -96,12 +96,6 @@ impl Search {
             "Explored Nodes per second: {:.2}",
             (self.num_nodes as f64) / elapsed_time.as_secs_f64()
         );
-        match best_move {
-            Some(board) => {
-                println!("Best Move: {}", board.get_next_uci());
-            }
-            None => {}
-        }
 
         best_move
     }

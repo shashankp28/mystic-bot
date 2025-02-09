@@ -271,10 +271,10 @@ impl Board {
         // Handle promotion case
         if is_promotion {
             let promotion_char = match promotion_type {
-                0 => "Q", // Queen
-                1 => "R", // Rook
-                2 => "B", // Bishop
-                3 => "L", // Knight
+                0 => "q", // Queen
+                1 => "r", // Rook
+                2 => "b", // Bishop
+                3 => "n", // Knight
                 _ => unreachable!(),
             };
             format!("{}{}{}", source_uci, destination_uci, promotion_char)
@@ -444,7 +444,7 @@ impl Iterator for LegalMoveVec {
 mod tests {
     use crate::base::defs::{ Board, GlobalMap };
     use std::time::Instant;
-    
+
     pub fn generate_game_tree(curr_board: Board, max_depth: u32, num_nodes: &mut u64) {
         *num_nodes += 1;
         if max_depth == 0 {

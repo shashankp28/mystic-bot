@@ -117,12 +117,12 @@ fn main() {
                     // Search in opening DB first
                     if let Some(next) = search.search_opening_db() {
                         println!("Next move found in opening database");
-                        println!("\nBest next move: {}", next.get_next_uci());
+                        println!("Best next move: {}", next.get_next_uci());
                     } else {
                         let next_board = search.best_next_board(time_limit);
 
                         if let Some(next) = next_board {
-                            println!("\nBest next move: {}", next.get_next_uci());
+                            println!("Best next move: {}", next.get_next_uci());
                         } else {
                             println!("No valid moves found.");
                         }
