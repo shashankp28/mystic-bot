@@ -44,7 +44,7 @@ impl Board {
         let king_positions: u64 = (self.kings >> (64 * is_black)) as u64;
         if end {
             if self.can_attack(1 - is_black, king_positions) {
-                return if is_black == 1 { 100.0 } else { -100.0 };
+                return if is_black == 1 { 1000.0 } else { -1000.0 };
             } else {
                 return 0.0;
             }
