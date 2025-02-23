@@ -66,7 +66,7 @@ pub struct Board {
 #[derive(Debug)]
 pub struct Search {
     pub board: Board,
-    pub memory: HashMap<BoardHash, f64>,
+    pub memory: HashMap<u128, u32>,
     pub num_nodes: usize,
     pub max_depth: u32,
     pub num_prunes: u32,

@@ -13,10 +13,18 @@ impl Search {
         colour: f64
     ) -> (Option<Board>, f64) {
         self.num_nodes += 1;
+        
+        // 3-fold repetition draw
+        if let Some(&count) = self.memory.get(&board.static_hash()) {
+            if count >= 3 {
+                return (None, 0.0);
+            }
+        }
 
         if depth_remaining <= 0 || Instant::now().duration_since(*start_time) > time_limit {
             return (None, board.eval * colour);
         }
+
 
         let mut best_score = f64::NEG_INFINITY;
         let mut best_move: Option<Board> = None;
@@ -24,6 +32,8 @@ impl Search {
         let mut end = true;
         for new_board in board.get_legal_moves() {
             end &= false;
+            let hash = new_board.static_hash();
+            *self.memory.entry(hash).or_insert(0) += 1;
             let (_, mut score) = self.nega_max(
                 &new_board,
                 -beta,
@@ -34,6 +44,13 @@ impl Search {
                 -colour
             );
             score *= -1.0;
+
+            if let Some(count) = self.memory.get_mut(&(hash as u128)) {
+                *count -= 1;
+                if *count == 0 {
+                    self.memory.remove(&(hash as u128));
+                }
+            }
 
             if score > best_score {
                 best_score = score;

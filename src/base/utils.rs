@@ -10,6 +10,23 @@ use crate::base::defs::{ Board, CastleSide, PieceColour, LegalMoveVec };
 use super::defs::GlobalMap;
 
 impl Board {
+
+    pub fn static_hash(&self) -> u128 {
+        let mut hash: u128 = 0;
+
+        hash ^= self.rooks;
+        hash ^= self.knights.rotate_left(7);
+        hash ^= self.bishops.rotate_left(13);
+        hash ^= self.queens.rotate_left(19);
+        hash ^= self.kings.rotate_left(23);
+        hash ^= self.pawns.rotate_left(29);
+
+        let meta = (self.metadata & 0b1111111111) as u128;
+        hash ^= meta.rotate_left(31);
+
+        hash
+    }
+
     pub fn get_number_pieces(&self) -> u32 {
         let rooks_count = self.rooks.count_ones();
         let knights_count = self.knights.count_ones();

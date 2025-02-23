@@ -5,6 +5,9 @@ use crate::base::utils::uci_to_uint;
 use rand::thread_rng;
 use rand::Rng;
 use core::f64;
+use std::fs::File;
+use std::io::{ self, BufRead };
+use std::path::Path;
 use std::time::{ Duration, Instant };
 use serde_json::Value;
 use self::random_choice::random_choice;
@@ -157,6 +160,33 @@ impl Search {
 
         legal_moves.choose(random_index).cloned()
     }
+
+    pub fn process_fen_history(&mut self, history_path: &str) {
+        // Open the file
+        let path = Path::new(history_path);
+        let file = match File::open(&path) {
+            Ok(file) => file,
+            Err(_) => {
+                println!("Error: Unable to open file {}", history_path);
+                return;
+            }
+        };
+
+        let reader = io::BufReader::new(file);
+        for (line_num, line) in reader.lines().enumerate() {
+            match line {
+                Ok(fen_string) => {
+                    if let Some(board) = Board::from_fen(&fen_string) {
+                        let hash = board.static_hash();
+                        *self.memory.entry(hash as u128).or_insert(0) += 1;
+                    }
+                }
+                Err(_) => {
+                    println!("Error reading line {}", line_num + 1);
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -169,7 +199,7 @@ mod tests {
         let fen = String::from("2r5/1N1NpPk1/2P1p1P1/pp2Pp1P/2rp2pK/2b4R/2PR1P1B/2q5 w - - 0 1");
         match Board::from_fen(&fen) {
             Some(board) => {
-                let memory: HashMap<u64, f64> = HashMap::new();
+                let memory: HashMap<u128, u32> = HashMap::new();
                 let mut search = Search {
                     board,
                     memory,

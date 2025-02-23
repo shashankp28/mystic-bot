@@ -16,6 +16,7 @@ from notebooks.lib import oldstyle_fen
 import os
 from typing import Optional, Type
 from types import TracebackType
+from collections import defaultdict
 
 
 # Use this logger variable to print messages to the console or log files.
@@ -114,11 +115,15 @@ class MysticBot(ExampleEngine):
     """
 
     def __init__(self, *args, **kwargs):
+        if not os.path.exists("./tmp/"):
+            os.mkdir("./tmp/")
         super().__init__(*args, **kwargs)
         self.executable = "./target/release/mystic-bot"
         self.chessBoard = chess.Board()
         self.timeout = 60  # Not used yet
         self.timeRemaining = 0
+        self.historyFile = f"./tmp/{random.randint(10000000, 99999999)}.txt"
+        self.fenVals = []
 
         # Run the bot process in the background and wait for 'Mystic Bot Ready' to appear
         self.bot_process = subprocess.Popen(
@@ -140,6 +145,11 @@ class MysticBot(ExampleEngine):
 
     def set_chess_board(self, board):
         self.chessBoard = board
+
+    def save_fen_vals(self):
+        with open(self.historyFile, "w+") as f:
+            for fen in self.fenVals:
+                f.write(f"{fen}\n")
 
     def get_best_move(self):
         msTimeRemainPerMove = int(self.timeRemaining*1000 / 40)
@@ -169,6 +179,9 @@ class MysticBot(ExampleEngine):
         :return: The move to play.
         """
 
+        self.fenVals.append(board.fen())
+        self.save_fen_vals()
+
         self.set_chess_board(board)
         self.timeRemaining = time_limit.white_clock if board.turn == chess.WHITE else time_limit.black_clock
         if self.timeRemaining is None:
@@ -177,6 +190,10 @@ class MysticBot(ExampleEngine):
         logger.info(result+"\n")
         logger.info(f"The move played by bot: {move}")
         moveObj = chess.Move.from_uci(move)
+
+        board.push(moveObj)
+        self.fenVals.append(board.fen())
+        self.save_fen_vals()
 
         return PlayResult(moveObj, None, draw_offered=draw_offered)
 
@@ -190,6 +207,7 @@ class MysticBot(ExampleEngine):
             self.bot_process.wait()
             logger.info("Bot process terminated!!")
             self.bot_process = None
+            os.remove(self.historyFile)
 
     def __del__(self):
         """

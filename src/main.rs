@@ -40,7 +40,7 @@ fn main() {
  `--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'                                                                       
                                                                                                             MYSTIC BOT                                
                                                                                                 Ready to make your move? Let's play!
-                                                                                        Input: "<fen position in quotes>" [Time limit in ms]
+                                                                                    Input: "<fen position in quotes>" [Time limit in ms] [fen history path]
                                                                                                         Type `exit` to quit
 "#;
 
@@ -58,7 +58,7 @@ fn main() {
 
         if input.eq_ignore_ascii_case("exit") {
             println!("Goodbye!");
-            break;
+            return;
         }
 
         // Custom argument parsing to handle quoted FEN strings
@@ -87,12 +87,14 @@ fn main() {
 
         if in_quotes {
             println!("Error: Unmatched quotes in input.");
-            continue;
+            return;
         }
 
         if args.is_empty() {
-            println!("Invalid input. Usage: <FEN Position in Quotes> [Time Limit in ms]");
-            continue;
+            println!(
+                "Invalid input. Usage: \"<FEN Position in Quotes>\" [Time Limit in ms] [FEN History Path]"
+            );
+            return;
         }
 
         let fen_position = &args[0];
@@ -102,10 +104,12 @@ fn main() {
             Some(Duration::from_secs(5)) // Default to 5 seconds
         };
 
+        let fen_history_path = if args.len() > 2 { args[2].clone() } else { String::from("") };
+
         if let Some(time_limit) = time_limit {
             match Board::from_fen(fen_position) {
                 Some(board) => {
-                    let memory: HashMap<u64, f64> = HashMap::new();
+                    let memory: HashMap<u128, u32> = HashMap::new();
                     let mut search = Search {
                         board,
                         memory,
@@ -113,6 +117,9 @@ fn main() {
                         max_depth: 3,
                         num_prunes: 0,
                     };
+                    search.process_fen_history(&fen_history_path);
+                    println!("History Path: {:?}", fen_history_path);
+                    println!("Search Memory: {:?}", search.memory);
 
                     // Search in opening DB first
                     if let Some(next) = search.search_opening_db() {
