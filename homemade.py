@@ -153,10 +153,10 @@ class MysticBot(ExampleEngine):
 
     def get_best_move(self):
         msTimeRemainPerMove = int(self.timeRemaining*1000 / 40)
-        timeToBeUsed = min(5000, msTimeRemainPerMove)
-        logger.info(f"Time used: {timeToBeUsed}")
+        # timeToBeUsed = min(5000, msTimeRemainPerMove)
+        logger.info(f"Time used: {msTimeRemainPerMove}")
         self.bot_process.stdin.write(
-            f'"{oldstyle_fen(self.chessBoard)}" {timeToBeUsed} {self.historyFile}\n')
+            f'"{oldstyle_fen(self.chessBoard)}" {msTimeRemainPerMove} {self.historyFile}\n')
         self.bot_process.stdin.flush()
         output = []
         while True:
