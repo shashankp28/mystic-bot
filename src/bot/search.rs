@@ -15,9 +15,16 @@ impl Search {
         let start_time: Instant = Instant::now();
         let is_black = ((self.board.metadata >> 8) & 1) == 0;
         let colour = if is_black { -1.0 } else { 1.0 };
-
         let mut best_move: Option<Board> = None;
         let mut best_eval = if is_black { f64::NEG_INFINITY } else { f64::INFINITY };
+
+        // If only 1 legal move available, return that directly
+        let legal_moves = self.board.get_legal_moves();
+        if legal_moves.len() == 1 {
+            best_move = Some(legal_moves.data[0]);
+            best_eval = legal_moves.data[0].eval;
+            self.max_depth = u32::MAX;
+        }
         // Iterative deepening loop
         while self.max_depth <= 15 && Instant::now().duration_since(start_time) < time_limit {
             let board = self.board.clone();
@@ -159,7 +166,7 @@ mod tests {
 
     #[test]
     fn test_complex_search() {
-        let fen = String::from("rnb2rk1/1pppnp1p/p4p2/2b1p3/2B1P3/2N5/PPPPNPPP/R1B2RK1 w - - 4 8");
+        let fen = String::from("r1b1kb1r/ppp2ppp/2n2n2/4P3/2B5/4PN2/PP3PPP/RNBqK2R w KQkq - 0 1");
         match Board::from_fen(&fen) {
             Some(board) => {
                 let memory: HashMap<u64, f64> = HashMap::new();

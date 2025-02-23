@@ -21,25 +21,6 @@ impl Search {
         let mut best_score = f64::NEG_INFINITY;
         let mut best_move: Option<Board> = None;
 
-        // Null Move Pruning
-        if depth_remaining > 2 && !board.in_check() {
-            let null_beta = -beta;
-            let null_depth = depth_remaining - 2; // Reduce depth more aggressively for null moves
-            let (_, null_score) = self.nega_max(
-                board, // No move played, skipping the turn
-                null_beta - 1.0, // Use a slightly tighter bound
-                null_beta,
-                null_depth,
-                time_limit,
-                start_time,
-                -colour
-            );
-
-            if -null_score >= beta {
-                return (None, beta); // Prune the branch
-            }
-        }
-
         let mut end = true;
         for new_board in board.get_legal_moves() {
             end &= false;

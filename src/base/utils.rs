@@ -199,7 +199,7 @@ impl Board {
     pub fn in_check(&self) -> bool {
         let curr_black: u8 = if ((self.metadata >> 8) & 1) == 1 { 0 } else { 1 };
         let king_position: u64 = (self.kings >> (64 * curr_black)) as u64;
-        return !self.can_attack(1 - curr_black, king_position);
+        return self.can_attack(1 - curr_black, king_position);
     }
 
     pub fn hash(&self) -> u64 {
