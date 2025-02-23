@@ -40,10 +40,7 @@ impl Board {
     }
 
     pub fn evaluate(&self, end: bool) -> f64 {
-        // Half move clock has reached 100, is a draw
-        if (self.metadata >> 9) & 0b1111111 >= 100 {
-            return 0.0;
-        }
+
         let is_black: u8 = if ((self.metadata >> 8) & 1) == 1 { 0 } else { 1 };
         let king_positions: u64 = (self.kings >> (64 * is_black)) as u64;
         if end {

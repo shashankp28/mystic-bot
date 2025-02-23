@@ -13,7 +13,7 @@ impl Search {
         colour: f64
     ) -> (Option<Board>, f64) {
         self.num_nodes += 1;
-        
+
         // 3-fold repetition draw
         if let Some(&count) = self.memory.get(&board.static_hash()) {
             if count >= 3 {
@@ -21,10 +21,14 @@ impl Search {
             }
         }
 
+        // Half move clock has reached 100, is a draw
+        if (board.metadata >> 9) & 0b1111111 >= 100 {
+            return (None, 0.0);
+        }
+
         if depth_remaining <= 0 || Instant::now().duration_since(*start_time) > time_limit {
             return (None, board.eval * colour);
         }
-
 
         let mut best_score = f64::NEG_INFINITY;
         let mut best_move: Option<Board> = None;
