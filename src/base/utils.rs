@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::{ cmp::Ordering, fs::File };
 use std::io::Read;
 use std::path::Path;
 use std::hash::DefaultHasher;
@@ -196,6 +196,12 @@ impl Board {
         return !self.can_attack(1 - prev_was_black, king_position);
     }
 
+    pub fn in_check(&self) -> bool {
+        let curr_black: u8 = if ((self.metadata >> 8) & 1) == 1 { 0 } else { 1 };
+        let king_position: u64 = (self.kings >> (64 * curr_black)) as u64;
+        return !self.can_attack(1 - curr_black, king_position);
+    }
+
     pub fn hash(&self) -> u64 {
         let mut hasher = DefaultHasher::new();
         self.rooks.hash(&mut hasher);
@@ -224,8 +230,21 @@ impl Board {
     // 8. [ X ] Keep track and update the Half Move Clock
     // 9. [ X ] Keep track and update the Full Move Number
 
-    pub fn get_legal_moves(self) -> LegalMoveVec {
+    pub fn sort_legal_moves(&self, legal_moves: &mut LegalMoveVec, is_black: bool) {
+        legal_moves.data.sort_by(|a, b| {
+            let order = a.eval.partial_cmp(&b.eval).unwrap_or(Ordering::Equal);
+
+            if is_black {
+                order // Ascending for black
+            } else {
+                order.reverse() // Descending for white
+            }
+        });
+    }
+
+    pub fn get_legal_moves(&self) -> LegalMoveVec {
         let mut combined_moves = LegalMoveVec::new();
+        let is_black = ((self.metadata >> 8) & 1) == 0;
 
         // Generate moves for each piece type sequentially
         combined_moves.extend(self.generate_rook_moves());
@@ -235,6 +254,8 @@ impl Board {
         combined_moves.extend(self.generate_pawn_moves());
         combined_moves.extend(self.generate_king_moves());
 
+        // Sort moves based on static evaluation
+        self.sort_legal_moves(&mut combined_moves, is_black);
         combined_moves
     }
 
@@ -302,6 +323,7 @@ impl Board {
                     pawns: 0,
                     metadata: 0,
                     latest_move: 0,
+                    eval: 0.0,
                 };
                 for index in 0..64 {
                     if let Some(piece) = fen_board.pieces.get(index).unwrap() {
@@ -346,6 +368,7 @@ impl Board {
                 board.metadata |= is_white_move << 8;
                 board.metadata |= ((fen_board.halfmove_clock as u32) & 127) << 9;
                 board.metadata |= (fen_board.fullmove_number as u32) << 16;
+                board.eval = board.evaluate(false);
                 Some(board)
             }
             Err(error) => {
@@ -407,6 +430,7 @@ impl LegalMoveVec {
 
     pub fn push(&mut self, board: &mut Board) {
         if board.is_legal() {
+            board.eval = board.evaluate(false);
             self.data.push(*board);
         }
     }

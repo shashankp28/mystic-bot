@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{ Deserialize, Serialize };
 use std::collections::HashMap;
 
 pub type BoardHash = u64;
@@ -58,6 +58,9 @@ pub struct Board {
     // [ 1 bit is_pawn_promotion ] [ 2 bits for Q, R, B, N promotion ],
     // [ 6 bits for source ] [ 6 bits for destination ] = 15 bits :D
     pub latest_move: u16,
+
+    // Static evaluation of the board
+    pub eval: f64,
 }
 
 #[derive(Debug)]

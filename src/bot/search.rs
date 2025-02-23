@@ -1,39 +1,23 @@
 extern crate random_choice;
-use crate::base::defs::{ GlobalMap, LegalMoveVec };
+use crate::base::defs::GlobalMap;
 use crate::base::defs::{ Board, Search };
 use crate::base::utils::uci_to_uint;
 use rand::thread_rng;
 use rand::Rng;
 use core::f64;
-use std::cmp::Ordering;
 use std::time::{ Duration, Instant };
 use serde_json::Value;
 use self::random_choice::random_choice;
 
 impl Search {
-    pub fn sort_legal_moves(&mut self, legal_moves: &mut LegalMoveVec, is_black: bool) {
-        legal_moves.data.sort_by(|a, b| {
-            let a_evaluation = a.evaluate(false);
-            let b_evaluation = b.evaluate(false);
-
-            let order = a_evaluation.partial_cmp(&b_evaluation).unwrap_or(Ordering::Equal);
-
-            if is_black {
-                order // Ascending for black
-            } else {
-                order.reverse() // Descending for white
-            }
-        });
-    }
-
     /// Returns the best move using iterative deepening and PVS
     pub fn best_next_board(&mut self, time_limit: Duration) -> Option<Board> {
         let start_time: Instant = Instant::now();
-        let is_black = (((self.board.metadata >> 8) & 1) == 1) as i32;
-        let colour = if is_black == 1 { -1.0 } else { 1.0 };
+        let is_black = ((self.board.metadata >> 8) & 1) == 0;
+        let colour = if is_black { -1.0 } else { 1.0 };
 
         let mut best_move: Option<Board> = None;
-        let mut best_eval = if is_black == 0 { f64::NEG_INFINITY } else { f64::INFINITY };
+        let mut best_eval = if is_black { f64::NEG_INFINITY } else { f64::INFINITY };
         // Iterative deepening loop
         while self.max_depth <= 15 && Instant::now().duration_since(start_time) < time_limit {
             let board = self.board.clone();
@@ -55,9 +39,9 @@ impl Search {
                 self.max_depth,
                 time_limit,
                 &start_time,
-                -colour
+                colour
             );
-            local_best_eval *= -1.0 * colour;
+            local_best_eval *= colour;
 
             // PVS algorithm
             // let (local_best_move, mut local_best_eval) = self.pvs(
@@ -67,9 +51,9 @@ impl Search {
             //     self.max_depth,
             //     time_limit,
             //     &start_time,
-            //     -colour
+            //     colour
             // );
-            // local_best_eval *= -1.0 * colour;
+            // local_best_eval *= colour;
 
             // Stop if time limit is exceeded (don't update half exploration)
             if Instant::now().duration_since(start_time) > time_limit {
@@ -175,7 +159,7 @@ mod tests {
 
     #[test]
     fn test_complex_search() {
-        let fen = String::from("2r5/1N1NpPk1/2P1p1P1/pp2Pp1P/2rp2pK/2b4R/2PR1P1B/2q5 w - - 0 1");
+        let fen = String::from("rnb2rk1/1pppnp1p/p4p2/2b1p3/2B1P3/2N5/PPPPNPPP/R1B2RK1 w - - 4 8");
         match Board::from_fen(&fen) {
             Some(board) => {
                 let memory: HashMap<u64, f64> = HashMap::new();
@@ -186,7 +170,15 @@ mod tests {
                     max_depth: 3,
                     num_prunes: 0,
                 };
-                search.best_next_board(Duration::from_millis(5000));
+                let best_move = search.best_next_board(Duration::from_millis(5000));
+                match best_move {
+                    Some(new_board) => {
+                        println!("Best Move Found: {}", new_board.get_next_uci());
+                    }
+                    None => {
+                        println!("Best move not found!!");
+                    }
+                }
             }
             None => {
                 println!("Error loading board: {}", fen);

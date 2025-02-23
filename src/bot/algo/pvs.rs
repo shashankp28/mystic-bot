@@ -15,22 +15,20 @@ impl Search {
         start_time: &Instant,
         colour: f64
     ) -> (Option<Board>, f64) {
-        // Check for terminal positions (checkmate or draw)
-        let mut legal_moves = board.get_legal_moves();
-        if legal_moves.len() == 0 {
-            return (None, board.evaluate(true) * (depth_remaining as f64) * colour);
-        }
-
         // If depth is zero or time runs out, evaluate the position
-        if depth_remaining == 0 || Instant::now().duration_since(*start_time) > time_limit {
-            return (None, board.evaluate(false) * colour);
+        if depth_remaining <= 0 || Instant::now().duration_since(*start_time) > time_limit {
+            return (None, board.eval * colour);
         }
-        self.sort_legal_moves(&mut legal_moves, colour == -1.0);
 
         let mut is_first_child = true;
         let mut score: f64;
         let mut best_move: Option<Board> = None;
-        for next_board in legal_moves {
+        // Ideally it should be `let end = legal_moves.len()==0`
+        // For some reason, pre-computing legal_moves is slower than iterating on the fly!!
+        // Even though it is not returning an iterator
+        let mut end = true;
+        for next_board in board.get_legal_moves() {
+            end &= false;
             self.num_nodes += 1;
 
             if is_first_child {
@@ -84,6 +82,11 @@ impl Search {
             }
 
             is_first_child = false;
+        }
+        // Check for terminal positions (checkmate or draw)
+        if end {
+            // Runs only if for loop didn't run
+            return (None, board.evaluate(true) * (depth_remaining as f64) * colour);
         }
         (best_move, alpha)
     }
