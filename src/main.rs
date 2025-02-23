@@ -107,6 +107,7 @@ fn main() {
         let fen_history_path = if args.len() > 2 { args[2].clone() } else { String::from("") };
 
         if let Some(time_limit) = time_limit {
+            println!("FEN String: {}", fen_position);
             match Board::from_fen(fen_position) {
                 Some(board) => {
                     let memory: HashMap<u128, u32> = HashMap::new();
