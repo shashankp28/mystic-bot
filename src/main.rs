@@ -119,6 +119,7 @@ fn main() {
                     };
                     search.process_fen_history(&fen_history_path);
                     println!("History Path: {:?}", fen_history_path);
+                    println!("Position History: {:?}", search.memory);
 
                     // Search in opening DB first
                     if let Some(next) = search.search_opening_db() {

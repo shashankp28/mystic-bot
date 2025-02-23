@@ -156,7 +156,7 @@ class MysticBot(ExampleEngine):
         timeToBeUsed = min(5000, msTimeRemainPerMove)
         logger.info(f"Time used: {timeToBeUsed}")
         self.bot_process.stdin.write(
-            f'"{oldstyle_fen(self.chessBoard)}" {timeToBeUsed}\n')
+            f'"{oldstyle_fen(self.chessBoard)}" {timeToBeUsed} {self.historyFile}\n')
         self.bot_process.stdin.flush()
         output = []
         while True:
@@ -201,13 +201,14 @@ class MysticBot(ExampleEngine):
         """
         Explicitly terminate the bot process.
         """
+        if os.path.exists(self.historyFile):
+            os.remove(self.historyFile)
         if self.bot_process:
             self.bot_process.stdin.write("exit\n")
             self.bot_process.stdin.flush()
             self.bot_process.wait()
             logger.info("Bot process terminated!!")
             self.bot_process = None
-            os.remove(self.historyFile)
 
     def __del__(self):
         """
