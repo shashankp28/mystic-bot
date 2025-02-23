@@ -166,7 +166,7 @@ mod tests {
 
     #[test]
     fn test_complex_search() {
-        let fen = String::from("r1b1kb1r/ppp2ppp/2n2n2/4P3/2B5/4PN2/PP3PPP/RNBqK2R w KQkq - 0 1");
+        let fen = String::from("2r5/1N1NpPk1/2P1p1P1/pp2Pp1P/2rp2pK/2b4R/2PR1P1B/2q5 w - - 0 1");
         match Board::from_fen(&fen) {
             Some(board) => {
                 let memory: HashMap<u64, f64> = HashMap::new();
