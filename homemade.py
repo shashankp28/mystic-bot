@@ -18,7 +18,6 @@ from typing import Optional, Type
 from types import TracebackType
 
 
-
 # Use this logger variable to print messages to the console or log files.
 # logger.info("message") will always print "message" to the console or log file.
 # logger.debug("message") will only print "message" if verbose logging is enabled.
@@ -119,6 +118,7 @@ class MysticBot(ExampleEngine):
         self.executable = "./target/release/mystic-bot"
         self.chessBoard = chess.Board()
         self.timeout = 60  # Not used yet
+        self.timeRemaining = 0
 
         # Run the bot process in the background and wait for 'Mystic Bot Ready' to appear
         self.bot_process = subprocess.Popen(
@@ -142,7 +142,11 @@ class MysticBot(ExampleEngine):
         self.chessBoard = board
 
     def get_best_move(self):
-        self.bot_process.stdin.write(f'"{oldstyle_fen(self.chessBoard)}"\n')
+        msTimeRemainPerMove = int(self.timeRemaining*1000 / 40)
+        timeToBeUsed = min(5000, msTimeRemainPerMove)
+        logger.info(f"Time used: {timeToBeUsed}")
+        self.bot_process.stdin.write(
+            f'"{oldstyle_fen(self.chessBoard)}" {timeToBeUsed}\n')
         self.bot_process.stdin.flush()
         output = []
         while True:
@@ -166,6 +170,9 @@ class MysticBot(ExampleEngine):
         """
 
         self.set_chess_board(board)
+        self.timeRemaining = time_limit.white_clock if board.turn == chess.WHITE else time_limit.black_clock
+        if self.timeRemaining is None:
+            self.timeRemaining = 10 * 60
         move, result = self.get_best_move()
         logger.info(result+"\n")
         logger.info(f"The move played by bot: {move}")
@@ -192,8 +199,8 @@ class MysticBot(ExampleEngine):
             self.terminate_bot()
 
     def __exit__(self, exc_type: Optional[Type[BaseException]],
-                     exc_value: Optional[BaseException],
-                     traceback: Optional[TracebackType]) -> None:
+                 exc_value: Optional[BaseException],
+                 traceback: Optional[TracebackType]) -> None:
         """Exit context and allow engine to shutdown nicely if there was no exception."""
         if exc_type is None:
             self.ping()
@@ -201,4 +208,3 @@ class MysticBot(ExampleEngine):
         self.engine.__exit__(exc_type, exc_value, traceback)
         if self.bot_process:
             self.terminate_bot()
-
