@@ -1,6 +1,7 @@
 use chess::Board;
-use std::sync::{ Arc, Mutex };
+use std::sync::Arc;
 use std::collections::HashMap;
+use dashmap::DashMap;
 
 #[derive(Debug, Clone)]
 pub struct Statistics {
@@ -18,5 +19,5 @@ pub struct EngineState {
 
 #[derive(Clone)]
 pub struct ServerState {
-    pub engines: Arc<Mutex<HashMap<String, EngineState>>>,
+    pub engines: Arc<DashMap<String, EngineState>>,
 }

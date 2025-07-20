@@ -10,9 +10,13 @@ pub struct RootResponse {
 }
 
 // Handler for GET /
+
 pub async fn root_handler(State(state): State<ServerState>) -> impl IntoResponse {
-    let engines = state.engines.lock().unwrap();
-    let games = engines.keys().cloned().collect::<Vec<String>>();
+    let games = state
+        .engines
+        .iter()
+        .map(|entry| entry.key().clone())
+        .collect::<Vec<String>>();
 
     let response = RootResponse {
         message: "Welcome to MysticBot".to_string(),
