@@ -19,6 +19,7 @@ pub struct BestMoveResponse {
     nodes: u64,
     time: u128,
     depth: u8,
+    new_position: String,
 }
 
 pub async fn best_move_handler(
@@ -34,6 +35,7 @@ pub async fn best_move_handler(
                 nodes: 0,
                 time: 0,
                 depth: 0,
+                new_position: String::new(),
             }),
         );
     };
@@ -49,6 +51,7 @@ pub async fn best_move_handler(
 
     let time_taken_ms = now.elapsed().as_millis();
 
+    let mut new_position = engine.current_board.to_string();
     // Update engine state statistics if requested
     if params.update_state.unwrap_or(false) {
         // Update cumulative statistics under a fixed key (e.g., 0)
@@ -61,6 +64,7 @@ pub async fn best_move_handler(
             // Update the current board with the selected move
             let new_board = engine.current_board.make_move_new(best);
             engine.current_board = new_board;
+            new_position = engine.current_board.to_string();
         }
     }
 
@@ -72,6 +76,7 @@ pub async fn best_move_handler(
             nodes,
             time,
             depth,
+            new_position,
         }),
     )
 }
