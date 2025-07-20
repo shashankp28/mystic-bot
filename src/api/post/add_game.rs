@@ -1,7 +1,7 @@
 use axum::{ extract::State, response::IntoResponse, Json, http::StatusCode };
 use serde::{ Deserialize, Serialize };
-use std::{ collections::HashMap, str::FromStr };
-use crate::bot::types::{ EngineState, ServerState };
+use std::{ collections::HashMap, str::FromStr, sync::Arc };
+use crate::bot::include::types::{ EngineState, ServerState };
 use chess::Board;
 
 #[derive(Debug, Deserialize)]
@@ -55,6 +55,7 @@ pub async fn new_game_handler(
         current_board,
         history,
         statistics: HashMap::new(),
+        global_map: Arc::clone(&state.global_map),
     };
 
     state.engines.insert(payload.game_id.clone(), engine);

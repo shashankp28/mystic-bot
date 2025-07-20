@@ -1,6 +1,6 @@
 use axum::{ extract::State, response::IntoResponse, Json };
 use serde::Serialize;
-use crate::bot::types::ServerState;
+use crate::bot::include::types::ServerState;
 
 // Response type for "/"
 #[derive(Serialize)]

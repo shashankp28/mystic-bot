@@ -1,8 +1,12 @@
-use axum::{ http::Response, routing::{ get, post }, Router };
+use axum::{ http::Response, routing::{ get, post, delete }, Router };
 use dashmap::DashMap;
 use mystic_bot::{
-    api::{ get::root::root_handler, post::add_game::new_game_handler },
-    bot::types::ServerState,
+    api::{
+        delete::delete_game::delete_game_handler,
+        get::root::root_handler,
+        post::{ add_game::new_game_handler, best_move::best_move_handler },
+    },
+    bot::include::types::{ GlobalMap, ServerState },
 };
 use std::{ net::SocketAddr, sync::Arc, time::Duration };
 use tower_http::trace::{ TraceLayer, DefaultMakeSpan, DefaultOnRequest };
@@ -69,8 +73,13 @@ async fn main() {
     tracing_subscriber::registry().with(fmt::layer()).init();
 
     // Create shared state
+    let global_map = Arc::new(GlobalMap {
+        // init fields here if needed
+    });
+
     let state = ServerState {
         engines: Arc::new(DashMap::new()),
+        global_map,
     };
 
     // Create trace layer with logging
@@ -83,6 +92,8 @@ async fn main() {
     let app = Router::new()
         .route("/", get(root_handler))
         .route("/game", post(new_game_handler))
+        .route("/game", delete(delete_game_handler))
+        .route("/best", post(best_move_handler))
         .layer(trace_layer)
         .with_state(state);
 
