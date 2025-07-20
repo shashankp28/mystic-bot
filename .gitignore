@@ -189,3 +189,5 @@ stockfish-ubuntu-x86-64
 db/
 openings.json
 tmp/
+*.pt
+*.csv
