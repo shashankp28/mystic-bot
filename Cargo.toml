@@ -12,12 +12,8 @@ opt-level = 3
 opt-level = 3
 
 [dependencies]
-serde = { version = "*", features = ["derive"] }
-serde_json = "1.0.137"
-rand = "0.8.5"
-flate2 = "*"
-tar = "*"
-random_choice = "*"
-fen = "*"
-rayon = "*"
-once_cell = "1.20.2"
+axum = "0.7.4"
+tokio = { version = "1.38", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+hyper = "1.3"

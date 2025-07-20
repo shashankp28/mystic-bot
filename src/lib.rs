@@ -1,3 +1,1 @@
-pub mod base;
-pub mod bot;
-pub mod maps;
+pub mod api;
