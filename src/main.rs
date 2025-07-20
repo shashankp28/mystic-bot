@@ -4,7 +4,11 @@ use mystic_bot::{
     api::{
         delete::delete_game::delete_game_handler,
         get::{ get_eval::eval_position_handler, root::root_handler },
-        post::{ add_game::new_game_handler, best_move::best_move_handler },
+        post::{
+            add_game::new_game_handler,
+            best_move::best_move_handler,
+            make_move::make_move_handler,
+        },
     },
     bot::include::types::{ GlobalMap, ServerState },
 };
@@ -93,7 +97,8 @@ async fn main() {
         .route("/", get(root_handler))
         .route("/game", post(new_game_handler))
         .route("/game", delete(delete_game_handler))
-        .route("/game/move", post(best_move_handler))
+        .route("/game/best", post(best_move_handler))
+        .route("/game/move", post(make_move_handler))
         .route("/eval", get(eval_position_handler))
         .layer(trace_layer)
         .with_state(state);

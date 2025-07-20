@@ -9,6 +9,8 @@ use crate::bot::search::search;
 pub struct EvalRequest {
     pub current_fen: String,
     pub history: Vec<String>,
+    time_left_ms: u128,
+    time_limit_ms: Option<u128>,
 }
 
 #[derive(Debug, Serialize)]
@@ -58,8 +60,8 @@ pub async fn eval_position_handler(
 
     // Default time values — can tweak or make them params if needed
     let (best_move, nodes, time_taken_ms, eval, depth) = search(
-        10000, // time_left_ms
-        Some(300), // time_limit_ms (shorter for stateless call)
+        payload.time_left_ms,
+        payload.time_limit_ms,
         &engine.current_board,
         &engine
     );

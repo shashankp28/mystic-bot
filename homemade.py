@@ -9,14 +9,9 @@ import random
 from lib.engine_wrapper import MinimalEngine
 from lib.types import MOVE, HOMEMADE_ARGS_TYPE
 import logging
-import json
-import subprocess
-import time
-from notebooks.lib import oldstyle_fen
-import os
 from typing import Optional, Type
 from types import TracebackType
-from collections import defaultdict
+import requests
 
 
 # Use this logger variable to print messages to the console or log files.
@@ -107,123 +102,67 @@ class ComboEngine(ExampleEngine):
 
 
 class MysticBot(ExampleEngine):
-
-    """
-    Get a move using multiple different methods.
-
-    This engine demonstrates how one can use `time_limit`, `draw_offered`, and `root_moves`.
-    """
-
     def __init__(self, *args, **kwargs):
-        if not os.path.exists("./tmp/"):
-            os.mkdir("./tmp/")
         super().__init__(*args, **kwargs)
-        self.executable = "./target/release/mystic-bot"
+
         self.chessBoard = chess.Board()
-        self.timeout = 60  # Not used yet
+        self.timeout = 60  # Not used
         self.timeRemaining = 0
-        self.historyFile = f"./tmp/{random.randint(10000000, 99999999)}.txt"
         self.fenVals = []
+        self.server_url = "http://localhost:8080"
 
-        # Run the bot process in the background and wait for 'Mystic Bot Ready' to appear
-        self.bot_process = subprocess.Popen(
-            [self.executable],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-
-        logger.info("Waiting for Bot to initialize...")
-        while True:
-            line = self.bot_process.stdout.readline().strip()
-            if "Mystic Bot Ready" in line:
-                time.sleep(0.5)  # Just for safety
-                break
-            print(line)
-        logger.info("Bot initialized successfully!!")
-
-    def set_chess_board(self, board):
+    def set_chess_board(self, board: chess.Board):
         self.chessBoard = board
 
-    def save_fen_vals(self):
-        with open(self.historyFile, "w+") as f:
-            for fen in self.fenVals:
-                f.write(f"{fen}\n")
-
     def get_best_move(self):
-        msTimeRemainPerMove = int(self.timeRemaining*1000 / 40)
-        # timeToBeUsed = min(5000, msTimeRemainPerMove)
-        logger.info(f"Time used: {msTimeRemainPerMove}")
-        self.bot_process.stdin.write(
-            f'"{oldstyle_fen(self.chessBoard)}" {msTimeRemainPerMove} {self.historyFile}\n')
-        self.bot_process.stdin.flush()
-        output = []
-        while True:
-            line = self.bot_process.stdout.readline().strip()
-            output.append(line)
-            if "Best next move" in line:
-                break
-        move = output[-1].split()[-1]
-        return move, '\n'.join(output)
+
+        payload = {
+            "current_fen": self.chessBoard.fen(),
+            "history": [],
+            "time_left_ms": int(self.timeRemaining * 1000),
+        }
+
+        print("Payload:", payload)
+        res = requests.get(f"{self.server_url}/eval", json=payload)
+        data = res.json()
+        print("Response:", data)
+
+        if res.status_code != 200 or data["best_move"] is None:
+            raise Exception(f"Failed to get best move: {data}")
+
+        return data["best_move"], data
 
     def search(self, board: chess.Board, time_limit: Limit, ponder: bool, draw_offered: bool, root_moves: MOVE) -> PlayResult:
-        """
-        Choose a move using multiple different methods.
-
-        :param board: The current position.
-        :param time_limit: Conditions for how long the engine can search (e.g. we have 10 seconds and search up to depth 10).
-        :param ponder: Whether the engine can ponder after playing a move.
-        :param draw_offered: Whether the bot was offered a draw.
-        :param root_moves: If it is a list, the engine should only play a move that is in `root_moves`.
-        :return: The move to play.
-        """
-
-        self.fenVals.append(board.fen())
-        self.save_fen_vals()
-
         self.set_chess_board(board)
+
         self.timeRemaining = time_limit.white_clock if board.turn == chess.WHITE else time_limit.black_clock
         if self.timeRemaining is None:
-            self.timeRemaining = 10 * 60
-        move, result = self.get_best_move()
-        logger.info(result+"\n")
-        logger.info(f"The move played by bot: {move}")
-        moveObj = chess.Move.from_uci(move)
+            self.timeRemaining = 60  # 60 seconds
 
-        board.push(moveObj)
-        self.fenVals.append(board.fen())
-        self.save_fen_vals()
+        move_uci, debug_info = self.get_best_move()
+        move_obj = chess.Move.from_uci(move_uci)
+        board.push(move_obj)
 
-        return PlayResult(moveObj, None, draw_offered=draw_offered)
+        logger.info(f"Move chosen: {move_uci}\n{debug_info}")
+        return PlayResult(move_obj, None, draw_offered=draw_offered)
 
     def terminate_bot(self):
-        """
-        Explicitly terminate the bot process.
-        """
-        if os.path.exists(self.historyFile):
-            os.remove(self.historyFile)
-        if self.bot_process:
-            self.bot_process.stdin.write("exit\n")
-            self.bot_process.stdin.flush()
-            self.bot_process.wait()
-            logger.info("Bot process terminated!!")
-            self.bot_process = None
+        try:
+            res = requests.delete(
+                f"{self.server_url}/game?game_id={self.game_id}")
+            if res.status_code == 200:
+                logger.info("Game session cleaned up.")
+        except Exception as e:
+            logger.warning(f"Failed to delete game session: {e}")
 
     def __del__(self):
-        """
-        Ensure bot process is terminated when the object is deleted.
-        """
-        if self.bot_process:
-            self.terminate_bot()
+        self.terminate_bot()
 
     def __exit__(self, exc_type: Optional[Type[BaseException]],
                  exc_value: Optional[BaseException],
                  traceback: Optional[TracebackType]) -> None:
-        """Exit context and allow engine to shutdown nicely if there was no exception."""
         if exc_type is None:
             self.ping()
             self.quit()
         self.engine.__exit__(exc_type, exc_value, traceback)
-        if self.bot_process:
-            self.terminate_bot()
+        self.terminate_bot()
