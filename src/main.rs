@@ -1,51 +1,21 @@
-use axum::{
-    extract::{Path, Json},
-    http::StatusCode,
-    routing::{get, post},
-    Router,
-};
-use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
-
-#[derive(Serialize, Deserialize)]
-struct User {
-    id: u32,
-    name: String,
-}
-
-// GET /hello
-async fn hello() -> &'static str {
-    "Hello, Axum!"
-}
-
-// GET /user/:id
-async fn get_user(Path(id): Path<u32>) -> Json<User> {
-    let user = User {
-        id,
-        name: "Alice".to_string(),
-    };
-    Json(user)
-}
-
-// POST /user
-async fn create_user(Json(payload): Json<User>) -> (StatusCode, Json<User>) {
-    (StatusCode::CREATED, Json(payload))
-}
+use axum::{ routing::{ get }, Router };
+use mystic_bot::{ api::get::root::root_handler, bot::types::ServerState };
+use std::{ collections::HashMap, net::SocketAddr, sync::{ Arc, Mutex } };
 
 #[tokio::main]
 async fn main() {
+    // Create shared state
+    let state = ServerState {
+        engines: Arc::new(Mutex::new(HashMap::new())),
+    };
+
     // Build the app with routes
-    let app = Router::new()
-        .route("/hello", get(hello))
-        .route("/user/:id", get(get_user))
-        .route("/user", post(create_user));
+    let app = Router::new().route("/", get(root_handler)).with_state(state);
 
     // Define the address
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     println!("🚀 Axum server running at http://{addr}");
 
     // Start the server using Hyper via Axum
-    axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app)
-        .await
-        .unwrap();
+    axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app).await.unwrap();
 }
