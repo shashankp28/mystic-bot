@@ -22,3 +22,4 @@ tower-http = { version = "0.5", features = ["trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 dashmap = "*"
+clap = { version = "*", features = ["derive"] }
