@@ -12,7 +12,7 @@ const COMPRESSED_OPENING_DB: &[u8] = include_bytes!("../../data/openings.tar.gz"
 fn read_opening_db() -> Result<Value, io::Error> {
     let output_dir = Path::new("./db");
     let compressed_path = output_dir.join("openings.tar.gz");
-    let file_path = output_dir.join("openingDb.json");
+    let file_path = output_dir.join("openingDB.json");
 
     // If file doesn't exist, extract from embedded archive
     if !file_path.exists() {
@@ -31,12 +31,12 @@ fn read_opening_db() -> Result<Value, io::Error> {
         let tar = GzDecoder::new(tar_file);
         let mut archive = Archive::new(tar);
         archive.unpack(output_dir)?;
-
+        
         // Clean up
         fs::remove_file(&compressed_path)?;
         println!("OpeningDB extracted to {:?}", file_path);
     }
-
+    
     // Read and parse JSON
     let file_content = fs::read_to_string(&file_path)?;
     let json_data: Value = serde_json
