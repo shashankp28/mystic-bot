@@ -145,24 +145,3 @@ class MysticBot(ExampleEngine):
 
         logger.info(f"Move chosen: {move_uci}\n{debug_info}")
         return PlayResult(move_obj, None, draw_offered=draw_offered)
-
-    def terminate_bot(self):
-        try:
-            res = requests.delete(
-                f"{self.server_url}/game?game_id={self.game_id}")
-            if res.status_code == 200:
-                logger.info("Game session cleaned up.")
-        except Exception as e:
-            logger.warning(f"Failed to delete game session: {e}")
-
-    def __del__(self):
-        self.terminate_bot()
-
-    def __exit__(self, exc_type: Optional[Type[BaseException]],
-                 exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> None:
-        if exc_type is None:
-            self.ping()
-            self.quit()
-        self.engine.__exit__(exc_type, exc_value, traceback)
-        self.terminate_bot()

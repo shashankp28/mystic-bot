@@ -103,6 +103,9 @@ async fn main() {
         .layer(trace_layer)
         .with_state(state);
 
+    // Load OpeningDB
+    GlobalMap::opening_db();
+
     // Define the address
     let addr = SocketAddr::from(([127, 0, 0, 1], cli.port));
     println!("🚀 Axum server running at http://{addr}");

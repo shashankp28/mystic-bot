@@ -191,3 +191,5 @@ openings.json
 tmp/
 *.pt
 *.csv
+*.html
+*zip
