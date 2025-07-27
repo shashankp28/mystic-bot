@@ -91,13 +91,27 @@ fn alpha_beta(
     }
 
     *nodes += 1;
+    // Base Cases: Checkmate / Stalemate / Repetition / Depth == 0
+    let board_hash = board.get_hash();
+    let repetition_count = engine_state.history.get(&board_hash).copied().unwrap_or(0);
 
-    if depth == 0 || board.status() == chess::BoardStatus::Checkmate {
-        let eval = evaluate_board(board);
-        if eval.abs() == 10_000 {
-            return (None, eval * ((depth as i32) + 1));
+    match board.status() {
+        chess::BoardStatus::Checkmate => {
+            let eval = evaluate_board(board);
+            let score = (eval * ((depth as i32) + 1)).clamp(-100_000, 100_000);
+            return (None, score);
         }
-        return (None, eval);
+        chess::BoardStatus::Stalemate => {
+            return (None, 0); // draw
+        }
+        _ if repetition_count >= 3 => {
+            return (None, 0); // threefold repetition draw
+        }
+        _ if depth == 0 => {
+            let eval = evaluate_board(board);
+            return (None, eval);
+        }
+        _ => {}
     }
 
     let mut best_move = None;
@@ -108,29 +122,22 @@ fn alpha_beta(
     for (_, (mv, _)) in prioritized_moves.into_iter().enumerate() {
         let new_board = board.make_move_new(mv);
         let board_hash = new_board.get_hash();
-        let board_count = engine_state.history
-            .get_key_value(&board_hash)
-            .map(|(_, v)| *v)
-            .unwrap_or(0);
 
-        let mut eval = 0;
-        if board_count < 2 {
-            *engine_state.history.entry(board_hash).or_insert(0) += 1;
-            (_, eval) = alpha_beta(
-                &new_board,
-                alpha,
-                beta,
-                !maximizing,
-                nodes,
-                deadline,
-                engine_state,
-                depth - 1
-            );
-            if let Some(count) = engine_state.history.get_mut(&board_hash) {
-                *count -= 1;
-                if *count == 0 {
-                    engine_state.history.remove(&board_hash);
-                }
+        *engine_state.history.entry(board_hash).or_insert(0) += 1;
+        let (_, eval) = alpha_beta(
+            &new_board,
+            alpha,
+            beta,
+            !maximizing,
+            nodes,
+            deadline,
+            engine_state,
+            depth - 1
+        );
+        if let Some(count) = engine_state.history.get_mut(&board_hash) {
+            *count -= 1;
+            if *count == 0 {
+                engine_state.history.remove(&board_hash);
             }
         }
 
