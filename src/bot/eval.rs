@@ -1,5 +1,5 @@
 use chess::{ Board, Piece };
-use crate::bot::include::types::GlobalMap;
+use crate::bot::{ include::types::GlobalMap, util::board::BoardExt };
 
 fn is_endgame(board: &Board) -> bool {
     // Simple heuristic: endgame if total material (excluding kings) is low
@@ -27,6 +27,11 @@ fn is_endgame(board: &Board) -> bool {
 
 pub fn evaluate_board(board: &Board) -> i32 {
     use chess::{ Piece::*, Color::* };
+
+    // Fifty-move rule draw
+    if board.halfmove_clock() >= 50 {
+        return 0;
+    }
 
     // Check for checkmate
     if board.status() == chess::BoardStatus::Checkmate {

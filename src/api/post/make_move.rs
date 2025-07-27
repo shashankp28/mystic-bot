@@ -1,9 +1,9 @@
-use axum::{extract::State, Json, http::StatusCode, response::IntoResponse};
-use crate::bot::include::types::{ServerState};
-use chess::{ChessMove, MoveGen};
+use axum::{ extract::State, Json, http::StatusCode, response::IntoResponse };
+use crate::bot::include::types::{ ServerState };
+use chess::{ ChessMove, MoveGen };
 use std::str::FromStr;
 
-use serde::{Deserialize, Serialize};
+use serde::{ Deserialize, Serialize };
 
 #[derive(Debug, Deserialize)]
 pub struct MoveRequest {
@@ -17,10 +17,9 @@ pub struct MoveResponse {
     pub new_fen: String,
 }
 
-
 pub async fn make_move_handler(
     State(state): State<ServerState>,
-    Json(payload): Json<MoveRequest>,
+    Json(payload): Json<MoveRequest>
 ) -> impl IntoResponse {
     let Some(mut engine) = state.engines.get_mut(&payload.game_id) else {
         return (
@@ -42,7 +41,8 @@ pub async fn make_move_handler(
         );
     };
 
-    let mut legal_moves = MoveGen::new_legal(&engine.current_board);
+    let board = engine.current_board.clone();
+    let mut legal_moves = MoveGen::new_legal(&board);
     if !legal_moves.any(|m| m == chess_move) {
         return (
             StatusCode::BAD_REQUEST,
@@ -54,6 +54,9 @@ pub async fn make_move_handler(
     }
 
     engine.current_board = engine.current_board.make_move_new(chess_move);
+    let hash = engine.current_board.get_hash();
+    *engine.history.entry(hash).or_insert(0) += 1;
+
     let new_fen = engine.current_board.to_string();
 
     (

@@ -1,85 +1,47 @@
-use chess::{ Board, ChessMove, MoveGen, Piece, Square };
+use chess::{ Board, ChessMove, MoveGen };
 use std::time::{ Duration, Instant };
-use std::str::FromStr;
-use rand::seq::SliceRandom;
-use rand::thread_rng;
-
-use crate::bot::{ eval::evaluate_board, include::types::{ EngineState, GlobalMap } };
-
-fn parse_uci_move(uci: &str, board: &Board) -> Option<ChessMove> {
-    if uci.len() < 4 {
-        return None;
-    }
-
-    let from = Square::from_str(&uci[0..2]).ok()?;
-    let to = Square::from_str(&uci[2..4]).ok()?;
-
-    let promotion = if uci.len() == 5 {
-        match uci.chars().nth(4)? {
-            'q' => Some(Piece::Queen),
-            'r' => Some(Piece::Rook),
-            'b' => Some(Piece::Bishop),
-            'n' => Some(Piece::Knight),
-            _ => None,
-        }
-    } else {
-        None
-    };
-
-    let candidate = ChessMove::new(from, to, promotion);
-
-    let legal = MoveGen::new_legal(board);
-    legal.into_iter().find(|m| *m == candidate)
-}
+use crate::bot::util::board::BoardExt;
+use crate::bot::util::lookup::lookup_opening_db;
+use crate::bot::{ eval::evaluate_board, include::types::{ EngineState } };
 
 pub fn search(
     time_left_ms: u128,
     time_limit_ms: Option<u128>,
     board: &Board,
-    engine_state: &EngineState
+    engine_state: &mut EngineState
 ) -> (Option<ChessMove>, u64, u128, i32, u8) {
-    let start_time = Instant::now();
     // Try Opening DB first
-    let board_hash_str = board.get_hash().to_string();
-    if let Some(opening_db) = GlobalMap::opening_db().as_object() {
-        if let Some(entry_array) = opening_db.get(&board_hash_str).and_then(|v| v.as_array()) {
-            let mut rng = thread_rng();
-            if let Some(random_entry) = entry_array.choose(&mut rng) {
-                if let Some(uci_str) = random_entry.get(0).and_then(|v| v.as_str()) {
-                    if let Some(chess_move) = parse_uci_move(uci_str, board) {
-                        println!("{}", chess_move);
-                        return (
-                            Some(chess_move),
-                            0,
-                            start_time.elapsed().as_millis(),
-                            evaluate_board(&board.make_move_new(chess_move)),
-                            0,
-                        );
-                    }
-                }
-            }
-        }
+    let start_time = Instant::now();
+    if let Some(chess_move) = lookup_opening_db(board) {
+        return (
+            Some(chess_move),
+            0,
+            start_time.elapsed().as_millis(),
+            evaluate_board(&board.make_move_new(chess_move)),
+            0,
+        );
     }
 
-    let max_time = time_limit_ms.unwrap_or(time_left_ms / 40).min(time_left_ms);
+    let start_time = Instant::now();
+    let max_time = time_limit_ms.unwrap_or(time_left_ms / 20).min(time_left_ms);
     let deadline = start_time + Duration::from_millis(max_time as u64);
+    let mut final_depth = 0;
 
     let mut best_move = None;
     let mut best_eval = 0;
     let mut total_nodes = 0;
-    let mut final_depth = 0;
 
     for depth in 1..=64 {
         let mut nodes = 0;
         let (mv, eval) = alpha_beta(
             &board,
-            depth,
             i32::MIN + 1,
             i32::MAX - 1,
             board.side_to_move() == chess::Color::White,
             &mut nodes,
             deadline,
-            engine_state
+            engine_state,
+            depth
         );
 
         if Instant::now() >= deadline {
@@ -90,7 +52,7 @@ pub fn search(
             best_move = Some(m);
             best_eval = eval;
             total_nodes += nodes;
-            final_depth += 1;
+            final_depth = depth;
         } else {
             break; // Timeout hit
         }
@@ -100,89 +62,100 @@ pub fn search(
     (best_move, total_nodes, time_taken, best_eval, final_depth)
 }
 
+fn get_prioritized_moves(board: &Board) -> Vec<(ChessMove, i32)> {
+    let mut move_priority_pairs = Vec::new();
+
+    for mv in MoveGen::new_legal(board) {
+        let priority = board.move_priority(mv);
+        move_priority_pairs.push((mv, priority));
+    }
+
+    // Sort moves by decreasing priority
+    move_priority_pairs.sort_by(|a, b| b.1.cmp(&a.1));
+
+    move_priority_pairs
+}
+
 fn alpha_beta(
     board: &Board,
-    depth: u8,
     mut alpha: i32,
     mut beta: i32,
     maximizing: bool,
     nodes: &mut u64,
     deadline: Instant,
-    engine_state: &EngineState
+    engine_state: &mut EngineState,
+    depth: u8
 ) -> (Option<ChessMove>, i32) {
     if Instant::now() >= deadline {
-        return (None, 0); // Timeout
+        return (None, 0);
     }
 
     *nodes += 1;
 
     if depth == 0 || board.status() == chess::BoardStatus::Checkmate {
         let eval = evaluate_board(board);
+        if eval.abs() == 10_000 {
+            return (None, eval * ((depth as i32) + 1));
+        }
         return (None, eval);
     }
 
     let mut best_move = None;
-    let movegen = MoveGen::new_legal(board);
+    let prioritized_moves = get_prioritized_moves(board);
 
-    if maximizing {
-        let mut max_eval = i32::MIN;
-        for mv in movegen {
-            let new_board = board.make_move_new(mv);
-            let (_, eval) = alpha_beta(
+    let mut best_eval = if maximizing { i32::MIN } else { i32::MAX };
+
+    for (_, (mv, _)) in prioritized_moves.into_iter().enumerate() {
+        let new_board = board.make_move_new(mv);
+        let board_hash = new_board.get_hash();
+        let board_count = engine_state.history
+            .get_key_value(&board_hash)
+            .map(|(_, v)| *v)
+            .unwrap_or(0);
+
+        let mut eval = 0;
+        if board_count < 2 {
+            *engine_state.history.entry(board_hash).or_insert(0) += 1;
+            (_, eval) = alpha_beta(
                 &new_board,
-                depth - 1,
                 alpha,
                 beta,
-                false,
+                !maximizing,
                 nodes,
                 deadline,
-                engine_state
+                engine_state,
+                depth - 1
             );
-
-            if Instant::now() >= deadline {
-                return (None, 0);
+            if let Some(count) = engine_state.history.get_mut(&board_hash) {
+                *count -= 1;
+                if *count == 0 {
+                    engine_state.history.remove(&board_hash);
+                }
             }
+        }
 
-            if eval > max_eval {
-                max_eval = eval;
+        if Instant::now() >= deadline {
+            return (None, 0);
+        }
+
+        if maximizing {
+            if eval > best_eval {
+                best_eval = eval;
                 best_move = Some(mv);
             }
-
             alpha = alpha.max(eval);
-            if beta <= alpha {
-                break;
-            }
-        }
-        (best_move, max_eval)
-    } else {
-        let mut min_eval = i32::MAX;
-        for mv in movegen {
-            let new_board = board.make_move_new(mv);
-            let (_, eval) = alpha_beta(
-                &new_board,
-                depth - 1,
-                alpha,
-                beta,
-                true,
-                nodes,
-                deadline,
-                engine_state
-            );
-
-            if Instant::now() >= deadline {
-                return (None, 0);
-            }
-
-            if eval < min_eval {
-                min_eval = eval;
+        } else {
+            if eval < best_eval {
+                best_eval = eval;
                 best_move = Some(mv);
             }
-
             beta = beta.min(eval);
-            if beta <= alpha {
-                break;
-            }
         }
-        (best_move, min_eval)
+
+        if beta <= alpha {
+            break;
+        }
     }
+
+    (best_move, best_eval)
 }

@@ -41,12 +41,13 @@ pub async fn best_move_handler(
     };
 
     let now = Instant::now();
+    let board = engine.current_board.clone();
 
     let (best_move, nodes, time, eval, depth) = search(
         params.time_left_ms,
         params.time_limit_ms,
-        &engine.current_board,
-        &engine
+        &board,
+        &mut engine
     );
 
     let time_taken_ms = now.elapsed().as_millis();

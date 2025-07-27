@@ -50,7 +50,7 @@ pub async fn eval_position_handler(
         }
     }
 
-    let engine = EngineState {
+    let mut engine = EngineState {
         game_id: "eval_temp".to_string(),
         current_board,
         history,
@@ -58,12 +58,13 @@ pub async fn eval_position_handler(
         global_map: Arc::clone(&state.global_map),
     };
 
+    let board = engine.current_board.clone();
     // Default time values — can tweak or make them params if needed
     let (best_move, nodes, time_taken_ms, eval, depth) = search(
         payload.time_left_ms,
         payload.time_limit_ms,
-        &engine.current_board,
-        &engine
+        &board,
+        &mut engine
     );
 
     (

@@ -26,3 +26,12 @@ pub struct ServerState {
     pub engines: Arc<DashMap<String, EngineState>>,
     pub global_map: Arc<GlobalMap>,
 }
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum SpecialMove {
+    Check,
+    Capture,
+    Attack,
+    Promotion,
+    EnPassant,
+}
