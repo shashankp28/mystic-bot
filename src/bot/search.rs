@@ -23,7 +23,7 @@ pub fn search(
     }
 
     let start_time = Instant::now();
-    let max_time = time_limit_ms.unwrap_or(time_left_ms / 20).min(time_left_ms);
+    let max_time = time_limit_ms.unwrap_or(time_left_ms / 40).min(time_left_ms);
     let deadline = start_time + Duration::from_millis(max_time as u64);
     let mut final_depth = 0;
 

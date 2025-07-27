@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chess::{ Board, Piece };
 use crate::bot::{ include::types::GlobalMap, util::board::BoardExt };
 
@@ -25,6 +27,14 @@ fn is_endgame(board: &Board) -> bool {
     non_king_material < 1600 // adjust threshold as needed
 }
 
+fn piece_counts(pieces: &[Piece]) -> HashMap<Piece, usize> {
+    let mut counts = HashMap::new();
+    for &piece in pieces {
+        *counts.entry(piece).or_insert(0) += 1;
+    }
+    counts
+}
+
 pub fn evaluate_board(board: &Board) -> i32 {
     use chess::{ Piece::*, Color::* };
 
@@ -38,7 +48,6 @@ pub fn evaluate_board(board: &Board) -> i32 {
         return if board.side_to_move() == White { -10_000 } else { 10_000 };
     }
 
-    // Count pieces for draw evaluation
     let mut white_pieces = vec![];
     let mut black_pieces = vec![];
 
@@ -54,11 +63,22 @@ pub fn evaluate_board(board: &Board) -> i32 {
     }
 
     let minor_or_lone = |pieces: &[Piece]| {
-        match pieces {
-            [King] => true,
-            [King, Bishop] => true,
-            [King, Knight] => true,
-            [King, Knight, Knight] => true,
+        let counts = piece_counts(pieces);
+
+        match counts.get(&Piece::King) {
+            Some(&1) => {
+                let num_bishops = *counts.get(&Piece::Bishop).unwrap_or(&0);
+                let num_knights = *counts.get(&Piece::Knight).unwrap_or(&0);
+                let total_pieces = pieces.len();
+
+                match (num_bishops, num_knights, total_pieces) {
+                    (0, 0, 1) => true, // just king
+                    (1, 0, 2) => true, // king + bishop
+                    (0, 1, 2) => true, // king + knight
+                    (0, 2, 3) => true, // king + 2 knights
+                    _ => false,
+                }
+            }
             _ => false,
         }
     };
