@@ -12,6 +12,7 @@ import logging
 from typing import Optional, Type
 from types import TracebackType
 import requests
+import json
 
 
 # Use this logger variable to print messages to the console or log files.
@@ -118,14 +119,25 @@ class MysticBot(ExampleEngine):
 
         payload = {
             "current_fen": self.chessBoard.fen(),
-            "history": [],
+            "history": self.fenVals,
             "time_left_ms": int(self.timeRemaining * 1000),
         }
 
-        print("Payload:", payload)
+        print("Payload:")
+        print("  Current FEN    :", payload["current_fen"])
+        print("  History Length :", len(payload["history"]))
+        print("  Time left (ms) :", payload["time_left_ms"])
+        print("")
+
         res = requests.get(f"{self.server_url}/eval", json=payload)
         data = res.json()
-        print("Response:", data)
+
+        print("Response:")
+        print(f"  Best Move : {data['best_move']}")
+        print(f"  Eval      : {data['eval']}")
+        print(f"  Nodes     : {data['nodes']}")
+        print(f"  Time (ms) : {data['time']}")
+        print(f"  Depth     : {data['depth']}")
 
         if res.status_code != 200 or data["best_move"] is None:
             raise Exception(f"Failed to get best move: {data}")
@@ -134,6 +146,7 @@ class MysticBot(ExampleEngine):
 
     def search(self, board: chess.Board, time_limit: Limit, ponder: bool, draw_offered: bool, root_moves: MOVE) -> PlayResult:
         self.set_chess_board(board)
+        self.fenVals.append(board.fen())
 
         self.timeRemaining = time_limit.white_clock if board.turn == chess.WHITE else time_limit.black_clock
         if self.timeRemaining is None:
@@ -142,6 +155,7 @@ class MysticBot(ExampleEngine):
         move_uci, debug_info = self.get_best_move()
         move_obj = chess.Move.from_uci(move_uci)
         board.push(move_obj)
+        self.fenVals.append(board.fen())
 
         logger.info(f"Move chosen: {move_uci}\n{debug_info}")
         return PlayResult(move_obj, None, draw_offered=draw_offered)

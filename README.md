@@ -55,29 +55,23 @@ The bot currently has an account on **Lichess**: [MysticBot](https://lichess.org
    ```
 
 3. **Run the Bot Independently**  
-   After building, you can run the bot directly:
+   After building, you can start the RestAPI server for the engine directly:
 
    ```bash
-   cargo run  # or
-   ./target/release/mystic-bot
+   cargo run -- --port <port>  # or
+   ./target/release/mystic-bot --port <port>
    ```
 
    ![Bot Running Example](./src/bot.png)
 
-   Sample _json_ files are give in the `sample/` directory
-
-4. **Play Locally Using Jupyter Notebook**  
-   If you prefer to play with the bot locally, use the Jupyter Notebook provided in `notebooks/botBattle.ipynb`.  
-   The notebook is **self-explanatory** and offers an interactive way to play against the bot.
-
-5. **Configure Lichess API Key**  
+4. **Configure Lichess API Key**  
    To connect the bot to your Lichess account:
    - Open the `config.yml.default` file.
    - Replace the placeholder `xxxxxxxxxxxxxxxxxxxxxx` with your Lichess API key:
      ```yml
      token: "your_lichess_api_key"
      ```
-   - Rename the file to `config.yml`:
+   - Rename the file to `config.yml` and make the necessary changes:
      ```bash
      mv config.yml.default config.yml
      ```
@@ -88,47 +82,15 @@ The bot currently has an account on **Lichess**: [MysticBot](https://lichess.org
 
 Follow these steps to set up and enjoy playing with **Mystic Chess Bot**! ♟️✨
 
+### API Docs: [Postman](https://documenter.getpostman.com/view/23661720/2sB3B7MtST)
+
 ## Bot Overview
 
-### 0. Bit-Board Representation
-
-The bot uses a bit-board representation for storing the chessboard state, making computations efficient and fast. Below is a brief overview of the `Board` struct:
-
-```rust
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-pub struct Board {
-    // Flattended Matrix representation of 8x8 Chess Board, with `a1` at the Top-Left
-    // Bit is 1 if the corresponding piece is at corresponding index else 0
-    // The black and white parts of the boards are concatenated in 64+64 = 128 bits
-    // The MSB part corresponds to black and LSB part corresponds to white
-    // The below representation based on
-    // Video: https://www.youtube.com/watch?v=w4FFX_otR-4&pp=ygUSbWFraW5nIGEgY2hlc3MgYm90
-    pub rooks: u128,
-    pub knights: u128,
-    pub bishops: u128,
-    pub queens: u128,
-    pub kings: u128,
-    pub pawns: u128,
-
-    // 1 bit, whether the board has an en-passant
-    // It is not possible for a board to have multiple en-passants at the same time!
-    // ( [ X bits full move number ], [ 7 bits Half move clock ], is_white_move, en_passant_warn,
-    //   [ 3 bits en_passant_column  ], Black o-o, Black o-o-o, White o-o, White o-o-o )
-    //   --> 16 + fullmove_number / 32 bits used
-    pub metadata: u32,
-
-    // Will not be Hashed
-    // [ 1 bit is_pawn_promotion ] [ 2 bits for Q, R, B, N promotion ],
-    // [ 6 bits for source ] [ 6 bits for destination ] = 15 bits :D
-    pub latest_move: u16
-}
-```
-
-This representation is inspired by this [video](https://www.youtube.com/watch?v=w4FFX_otR-4&pp=ygUSbWFraW5nIGEgY2hlc3MgYm90).
+The engine uses Rust `chess` chrater to generate moves
 
 ### 1. Opening Database
 
-- The bot uses an opening database containing **1.1 million+** chess positions.
+- The bot uses an opening database containing **0.8 million+** chess positions.
 - For the first few moves, the bot looks up this database to instantly play the best-known responses.
 - This enables quick and accurate moves in the opening phase, saving computation time for later stages of the game.
 
@@ -136,16 +98,18 @@ This representation is inspired by this [video](https://www.youtube.com/watch?v=
 
 The bot implements a search algorithm using a combination of:
 
+- **Dynamic time keeping**: Plays slower if more time is available, and faster if less
+- **Iterative Deepening**: Calculates different depths based on time available
 - **Alpha-beta pruning**: Prunes unnecessary branches in the search tree.
-- **Principal Variation Search (PVS)**: Optimizes the exploration of the search tree's principal variation.
+- **Move Ordering**: Orders moves based on checks / captures / attacks, to aid AB pruning
 
 Key features:
 
-- Evaluates **300,000+** positions per second on average.
+- Evaluates **300,000+** positions per second on an average.
+- Evaluates to **5-6+** positional game depth.
 - Dynamically adjusts search depth:
   - **Midgames**: Searches to a depth of **5–6 moves**.
-  - **Endgames**: Increases search depth to **9–10 moves**.
-- **Think time**: **5 seconds per move** outside of the opening database.
+  - **Endgames**: Increases search depth to **10-11 moves**.
 
 ### 3. Heuristics
 
@@ -162,11 +126,12 @@ For reference, the scoring is inspired by this [website](https://www.chessprogra
 
 - **Neural Network Integration**: To enable adaptive learning and improve decision-making
 - **Endgame Tablebases**: For perfect endgame play
+- **Better Algorithm**: Better evaluation function, better search algorithm
 - **Cross-Platform Support**: Ensuring compatibility across Windows, Linux, and macOS
 
 ## Contact
 
-For any inquiries or support, feel free to reach out to me at: **shashankp2832@gmail.com**
+For any inquiries or support, feel free to reach out to: **shashankp2832@gmail.com** / **anandishegde@gmail.com**
 
 ## License
 
