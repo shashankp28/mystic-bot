@@ -38,6 +38,37 @@ pub fn evaluate_board(board: &Board) -> i32 {
         return if board.side_to_move() == White { -10_000 } else { 10_000 };
     }
 
+    // Count pieces for draw evaluation
+    let mut white_pieces = vec![];
+    let mut black_pieces = vec![];
+
+    for sq in chess::ALL_SQUARES {
+        if let Some(piece) = board.piece_on(sq) {
+            let color = board.color_on(sq).unwrap();
+            if color == White {
+                white_pieces.push(piece);
+            } else {
+                black_pieces.push(piece);
+            }
+        }
+    }
+
+    let minor_or_lone = |pieces: &[Piece]| {
+        match pieces {
+            [King] => true,
+            [King, Bishop] => true,
+            [King, Knight] => true,
+            [King, Knight, Knight] => true,
+            _ => false,
+        }
+    };
+
+    // Case 1: Both sides have only king/king+bishop/knight/(2 knights)
+    if minor_or_lone(&white_pieces) && minor_or_lone(&black_pieces) {
+        return 0;
+    }
+
+    // Case 2: One side has only king+bishop or king+knight; ignore its score
     let mut score: i32 = 0;
     let is_endgame = is_endgame(board);
 
@@ -59,7 +90,6 @@ pub fn evaluate_board(board: &Board) -> i32 {
                 King => 0,
             };
 
-            // Use table from GlobalMap
             let positional = match piece {
                 Pawn => GlobalMap::PAWN_TABLE[row][col],
                 Knight => GlobalMap::KNIGHT_TABLE[row][col],
@@ -78,9 +108,13 @@ pub fn evaluate_board(board: &Board) -> i32 {
             let value = base + positional;
 
             if color == White {
-                score += value;
+                if !minor_or_lone(&white_pieces) {
+                    score += value;
+                }
             } else {
-                score -= value;
+                if !minor_or_lone(&black_pieces) {
+                    score -= value;
+                }
             }
         }
     }
