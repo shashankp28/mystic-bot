@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use chess::{ Board, Piece };
 use crate::bot::{ include::types::GlobalMap, util::board::BoardExt };
 
@@ -27,14 +25,6 @@ fn is_endgame(board: &Board) -> bool {
     non_king_material < 1600 // adjust threshold as needed
 }
 
-fn piece_counts(pieces: &[Piece]) -> HashMap<Piece, usize> {
-    let mut counts = HashMap::new();
-    for &piece in pieces {
-        *counts.entry(piece).or_insert(0) += 1;
-    }
-    counts
-}
-
 pub fn evaluate_board(board: &Board) -> i32 {
     use chess::{ Piece::*, Color::* };
 
@@ -48,43 +38,61 @@ pub fn evaluate_board(board: &Board) -> i32 {
         return if board.side_to_move() == White { -10_000 } else { 10_000 };
     }
 
-    let mut white_pieces = vec![];
-    let mut black_pieces = vec![];
+    let mut white_total = 0;
+    let mut black_total = 0;
+    let mut white_bishops = 0;
+    let mut black_bishops = 0;
+    let mut white_knights = 0;
+    let mut black_knights = 0;
 
     for sq in chess::ALL_SQUARES {
         if let Some(piece) = board.piece_on(sq) {
             let color = board.color_on(sq).unwrap();
-            if color == White {
-                white_pieces.push(piece);
-            } else {
-                black_pieces.push(piece);
+
+            match color {
+                White => {
+                    white_total += 1;
+                    match piece {
+                        Piece::Bishop => {
+                            white_bishops += 1;
+                        }
+                        Piece::Knight => {
+                            white_knights += 1;
+                        }
+                        _ => {}
+                    }
+                }
+                Black => {
+                    black_total += 1;
+                    match piece {
+                        Piece::Bishop => {
+                            black_bishops += 1;
+                        }
+                        Piece::Knight => {
+                            black_knights += 1;
+                        }
+                        _ => {}
+                    }
+                }
             }
         }
     }
 
-    let minor_or_lone = |pieces: &[Piece]| {
-        let counts = piece_counts(pieces);
-
-        match counts.get(&Piece::King) {
-            Some(&1) => {
-                let num_bishops = *counts.get(&Piece::Bishop).unwrap_or(&0);
-                let num_knights = *counts.get(&Piece::Knight).unwrap_or(&0);
-                let total_pieces = pieces.len();
-
-                match (num_bishops, num_knights, total_pieces) {
-                    (0, 0, 1) => true, // just king
-                    (1, 0, 2) => true, // king + bishop
-                    (0, 1, 2) => true, // king + knight
-                    (0, 2, 3) => true, // king + 2 knights
-                    _ => false,
-                }
-            }
+    let is_minor_or_lone = |total: usize, bishops: usize, knights: usize| {
+        match total {
+            1 => true, // Only king
+            2 if bishops == 1 => true, // King + bishop
+            2 if knights == 1 => true, // King + knight
+            3 if knights == 2 => true, // King + 2 knights
             _ => false,
         }
     };
 
-    // Case 1: Both sides have only king/king+bishop/knight/(2 knights)
-    if minor_or_lone(&white_pieces) && minor_or_lone(&black_pieces) {
+    // Case 1: Both sides have only king/(bishop|knight|2 knights) → draw
+    if
+        is_minor_or_lone(white_total, white_bishops, white_knights) &&
+        is_minor_or_lone(black_total, black_bishops, black_knights)
+    {
         return 0;
     }
 
@@ -128,11 +136,11 @@ pub fn evaluate_board(board: &Board) -> i32 {
             let value = base + positional;
 
             if color == White {
-                if !minor_or_lone(&white_pieces) {
+                if !is_minor_or_lone(white_total, white_bishops, white_knights) {
                     score += value;
                 }
             } else {
-                if !minor_or_lone(&black_pieces) {
+                if !is_minor_or_lone(black_total, black_bishops, black_knights) {
                     score -= value;
                 }
             }
