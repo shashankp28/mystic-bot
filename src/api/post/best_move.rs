@@ -1,8 +1,7 @@
 use axum::{ extract::State, http::StatusCode, response::IntoResponse, Json };
 use serde::{ Deserialize, Serialize };
 use std::{ time::Instant };
-use crate::bot::{ include::types::{ ServerState, Statistics } };
-use crate::bot::search::search;
+use crate::bot::{ algorithm::root::search, include::types::{ ServerState, Statistics } };
 
 #[derive(Debug, Deserialize)]
 pub struct BestMoveQuery {

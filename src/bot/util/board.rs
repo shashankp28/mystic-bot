@@ -10,9 +10,10 @@ pub trait BoardExt {
     fn is_quiet_position(&self) -> bool;
     fn move_priority(&self, mv: ChessMove) -> i32;
     fn halfmove_clock(&self) -> u32;
+    fn capture_pieces(&self, mv: ChessMove) -> Option<(Piece, Piece)>;
 }
 
-fn is_noisy(classification: &HashSet<SpecialMove>) -> bool {
+pub fn is_noisy(classification: &HashSet<SpecialMove>) -> bool {
     classification.contains(&SpecialMove::Check) ||
         classification.contains(&SpecialMove::Capture) ||
         classification.contains(&SpecialMove::Promotion) ||
@@ -131,5 +132,27 @@ impl BoardExt for Board {
             .nth(4)
             .and_then(|s| s.parse::<u32>().ok())
             .unwrap_or(0)
+    }
+
+    fn capture_pieces(&self, mv: ChessMove) -> Option<(Piece, Piece)> {
+        if !self.classify_move(mv).contains(&SpecialMove::Capture) {
+            return None;
+        }
+
+        let attacker = self.piece_on(mv.get_source())?;
+
+        let victim = if self.is_en_passant(mv) {
+            // For en passant, the victim is always one rank behind the destination
+            let dest = mv.get_dest();
+            let victim_sq = match self.side_to_move() {
+                chess::Color::White => dest.down()?, // One rank below
+                chess::Color::Black => dest.up()?, // One rank above
+            };
+            self.piece_on(victim_sq)?
+        } else {
+            self.piece_on(mv.get_dest())?
+        };
+
+        Some((attacker, victim))
     }
 }

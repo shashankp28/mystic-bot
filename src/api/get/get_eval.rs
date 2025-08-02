@@ -2,8 +2,7 @@ use axum::{ extract::{ State, Json }, response::IntoResponse, http::StatusCode }
 use serde::{ Deserialize, Serialize };
 use std::{ str::FromStr, collections::HashMap, sync::Arc };
 use chess::Board;
-use crate::bot::include::types::{ ServerState, EngineState };
-use crate::bot::search::search;
+use crate::bot::{ algorithm::root::search, include::types::{ EngineState, ServerState } };
 
 #[derive(Debug, Deserialize)]
 pub struct EvalRequest {

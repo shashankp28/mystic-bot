@@ -1,5 +1,5 @@
-use chess::{ Board, Piece };
-use crate::bot::{ include::types::GlobalMap, util::board::BoardExt };
+use chess::{ BitBoard, Board, Piece };
+use crate::bot::{ include::types::GlobalMap, util::{ board::BoardExt, piece::piece_value } };
 
 fn is_endgame(board: &Board) -> bool {
     // Simple heuristic: endgame if total material (excluding kings) is low
@@ -23,6 +23,70 @@ fn is_endgame(board: &Board) -> bool {
     }
 
     non_king_material < 1600 // adjust threshold as needed
+}
+
+fn square_distance(a: chess::Square, b: chess::Square) -> u8 {
+    let file_dist = ((a.get_file().to_index() as i32) - (b.get_file().to_index() as i32)).abs();
+    let rank_dist = ((a.get_rank().to_index() as i32) - (b.get_rank().to_index() as i32)).abs();
+    (file_dist + rank_dist) as u8
+}
+
+fn evaluate_king_proximity(board: &Board) -> i32 {
+    use chess::{ Color::*, Piece::King };
+
+    if !is_endgame(board) {
+        return 0;
+    }
+
+    let white_king_sq = (board.pieces(King) & board.color_combined(White))
+        .into_iter()
+        .next()
+        .unwrap();
+    let black_king_sq = (board.pieces(King) & board.color_combined(Black))
+        .into_iter()
+        .next()
+        .unwrap();
+
+    let dist = square_distance(white_king_sq, black_king_sq);
+    let proximity_score = 10 - (dist as i32); // Closer = better
+
+    proximity_score * 3
+}
+
+fn evaluate_connected_pawns(board: &Board) -> i32 {
+    use chess::{ Color::*, Piece::Pawn };
+
+    let mut score = 0;
+
+    for &color in &[White, Black] {
+        let pawns = board.pieces(Pawn) & board.color_combined(color);
+
+        for sq in pawns {
+            let rank = sq.get_rank().to_index();
+            let file = sq.get_file().to_index();
+
+            let connected = [-1, 1].iter().any(|&df| {
+                let f = ((file as isize) + df) as usize;
+                if f > 7 {
+                    return false;
+                }
+                let adj_sq = chess::Square::make_square(
+                    chess::Rank::from_index(rank),
+                    chess::File::from_index(f)
+                );
+                board.piece_on(adj_sq) == Some(Pawn) && board.color_on(adj_sq) == Some(color)
+            });
+
+            if connected {
+                score += match color {
+                    White => 10,
+                    Black => -10,
+                };
+            }
+        }
+    }
+
+    score
 }
 
 pub fn evaluate_board(board: &Board) -> i32 {
@@ -109,15 +173,7 @@ pub fn evaluate_board(board: &Board) -> i32 {
                 Black => (7 - rank, file),
             };
 
-            let base = match piece {
-                Pawn => 100,
-                Knight => 320,
-                Bishop => 330,
-                Rook => 500,
-                Queen => 900,
-                King => 0,
-            };
-
+            let base = piece_value(piece);
             let positional = match piece {
                 Pawn => GlobalMap::PAWN_TABLE[row][col],
                 Knight => GlobalMap::KNIGHT_TABLE[row][col],
@@ -146,6 +202,9 @@ pub fn evaluate_board(board: &Board) -> i32 {
             }
         }
     }
+
+    score += evaluate_connected_pawns(board);
+rd);    score += evaluate_king_proximity(board);
 
     score
 }
