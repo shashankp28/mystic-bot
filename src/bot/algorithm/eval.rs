@@ -1,4 +1,4 @@
-use chess::{ BitBoard, Board, Piece };
+use chess::{ Board, Piece };
 use crate::bot::{ include::types::GlobalMap, util::{ board::BoardExt, piece::piece_value } };
 
 fn is_endgame(board: &Board) -> bool {
@@ -204,7 +204,7 @@ pub fn evaluate_board(board: &Board) -> i32 {
     }
 
     score += evaluate_connected_pawns(board);
-rd);    score += evaluate_king_proximity(board);
+    score += evaluate_king_proximity(board);
 
     score
 }
