@@ -11,6 +11,7 @@ pub trait BoardExt {
     fn move_priority(&self, mv: ChessMove) -> i32;
     fn halfmove_clock(&self) -> u32;
     fn capture_pieces(&self, mv: ChessMove) -> Option<(Piece, Piece)>;
+    fn material_score(&self, color: chess::Color) -> i32;
 }
 
 pub fn is_noisy(classification: &HashSet<SpecialMove>) -> bool {
@@ -154,5 +155,19 @@ impl BoardExt for Board {
         };
 
         Some((attacker, victim))
+    }
+
+    fn material_score(&self, color: chess::Color) -> i32 {
+        let mut score = 0;
+
+        for sq in chess::ALL_SQUARES {
+            if self.color_on(sq) == Some(color) {
+                if let Some(piece) = self.piece_on(sq) {
+                    score += piece_value(piece);
+                }
+            }
+        }
+
+        score
     }
 }

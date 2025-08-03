@@ -31,12 +31,12 @@ fn read_opening_db() -> Result<Value, io::Error> {
         let tar = GzDecoder::new(tar_file);
         let mut archive = Archive::new(tar);
         archive.unpack(output_dir)?;
-        
+
         // Clean up
         fs::remove_file(&compressed_path)?;
         println!("OpeningDB extracted to {:?}", file_path);
     }
-    
+
     // Read and parse JSON
     let file_content = fs::read_to_string(&file_path)?;
     let json_data: Value = serde_json
@@ -123,13 +123,13 @@ impl GlobalMap {
     ];
 
     pub const KING_TABLE_END: [[i32; 8]; 8] = [
-        [-50, -30, -30, -30, -30, -30, -30, -50],
-        [-30, -30, 0, 0, 0, 0, -30, -30],
-        [-30, -10, 20, 30, 30, 20, -10, -30],
-        [-30, -10, 30, 40, 40, 30, -10, -30],
-        [-30, -10, 30, 40, 40, 30, -10, -30],
-        [-30, -10, 20, 30, 30, 20, -10, -30],
-        [-30, -20, -10, 0, 0, -10, -20, -30],
-        [-50, -40, -30, -20, -20, -30, -40, -50],
+        [-25, -23, -20, -20, -20, -20, -23, -25],
+        [-23, -15, -5, -5, -5, -5, -15, -23],
+        [-20, -5, 15, 20, 20, 15, -5, -20],
+        [-20, -5, 20, 25, 25, 20, -5, -20],
+        [-20, -5, 20, 25, 25, 20, -5, -20],
+        [-20, -5, 15, 20, 20, 15, -5, -20],
+        [-23, -15, -5, -5, -5, -5, -15, -23],
+        [-25, -23, -20, -20, -20, -20, -23, -25],
     ];
 }

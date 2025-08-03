@@ -5,8 +5,6 @@ use crate::bot::algorithm::eval::evaluate_board;
 use crate::bot::util::lookup::lookup_opening_db;
 use crate::bot::{ include::types::{ EngineState } };
 
-pub const QUIET_SEARCH_DEPTH: u8 = 4;
-
 pub fn search(
     time_left_ms: u128,
     time_limit_ms: Option<u128>,

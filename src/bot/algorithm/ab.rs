@@ -1,22 +1,27 @@
 use chess::{ Board, ChessMove, MoveGen };
 use std::time::Instant;
 use crate::bot::algorithm::eval::evaluate_board;
-use crate::bot::algorithm::root::QUIET_SEARCH_DEPTH;
+use crate::bot::include::types::SpecialMove;
 use crate::bot::util::board::BoardExt;
 use crate::bot::util::piece::piece_value;
 use crate::bot::{ include::types::{ EngineState } };
 
-pub fn get_prioritized_moves(board: &Board, is_capture: bool) -> Vec<(ChessMove, i32)> {
+pub fn get_prioritized_moves(board: &Board, only_noise: bool) -> Vec<(ChessMove, i32)> {
     let mut move_priority_pairs = Vec::new();
 
     for mv in MoveGen::new_legal(board) {
-        if is_capture {
+        if only_noise {
+            let move_tags = board.classify_move(mv);
+            if
+                !move_tags.contains(&SpecialMove::Promotion) &&
+                !move_tags.contains(&SpecialMove::Capture)
+            {
+                continue;
+            }
             if let Some((attacker, victim)) = board.capture_pieces(mv) {
                 if piece_value(victim) < piece_value(attacker) {
                     continue;
                 }
-            } else {
-                continue;
             }
         }
 
@@ -58,7 +63,8 @@ pub fn alpha_beta(
     match board.status() {
         chess::BoardStatus::Checkmate => {
             let eval = evaluate_board(board);
-            let score = (eval * ((depth as i32) + 1)).clamp(-100_000, 100_000);
+            let depth_weight = 20 - current_depth.min(20);
+            let score = (eval * ((depth_weight as i32) + 1)).clamp(-500_000, 500_000);
             return (None, score);
         }
         chess::BoardStatus::Stalemate => {
@@ -76,7 +82,7 @@ pub fn alpha_beta(
                 nodes,
                 deadline,
                 engine_state,
-                QUIET_SEARCH_DEPTH,
+                current_depth-1,
                 true,
                 current_depth + 1,
                 max_depth_reached
@@ -111,7 +117,6 @@ pub fn alpha_beta(
             current_depth + 1,
             max_depth_reached
         );
-
 
         if let Some(count) = engine_state.history.get_mut(&new_hash) {
             *count -= 1;
