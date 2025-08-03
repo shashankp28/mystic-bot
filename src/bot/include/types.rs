@@ -1,7 +1,9 @@
 use chess::Board;
+use serde::Deserialize;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{ Arc, Mutex };
 use dashmap::DashMap;
+use lru::LruCache;
 
 #[derive(Debug, Clone)]
 pub struct Statistics {
@@ -16,6 +18,7 @@ pub struct EngineState {
     pub history: HashMap<u64, u32>,
     pub statistics: HashMap<u64, Statistics>,
     pub global_map: Arc<GlobalMap>,
+    pub transposition_table: Arc<Mutex<LruCache<(u64, u8), i32>>>,
 }
 
 #[derive(Debug)]
@@ -35,3 +38,9 @@ pub enum SpecialMove {
     Promotion,
     EnPassant,
 }
+
+pub const TT_TABLE_SIZE: usize = 100_1000;
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct OpeningEntry(pub String, pub u32);
+pub type OpeningBook = HashMap<u64, Vec<OpeningEntry>>;

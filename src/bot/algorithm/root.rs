@@ -48,7 +48,7 @@ pub fn search(
             engine_state,
             depth,
             false,
-            1,
+            0,
             &mut max_depth
         );
 

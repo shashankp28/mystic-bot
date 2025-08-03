@@ -1,8 +1,13 @@
 use axum::{ extract::{ State, Json }, response::IntoResponse, http::StatusCode };
 use serde::{ Deserialize, Serialize };
-use std::{ str::FromStr, collections::HashMap, sync::Arc };
+use std::{ collections::HashMap, str::FromStr, sync::{ Arc, Mutex } };
 use chess::Board;
-use crate::bot::{ algorithm::root::search, include::types::{ EngineState, ServerState } };
+use crate::bot::{
+    algorithm::root::search,
+    include::types::{ EngineState, ServerState, TT_TABLE_SIZE },
+};
+use lru::LruCache;
+use std::num::NonZeroUsize;
 
 #[derive(Debug, Deserialize)]
 pub struct EvalRequest {
@@ -49,12 +54,15 @@ pub async fn eval_position_handler(
         }
     }
 
+    let capacity = NonZeroUsize::new(TT_TABLE_SIZE).unwrap();
+    let transposition_table = Arc::new(Mutex::new(LruCache::new(capacity)));
     let mut engine = EngineState {
         game_id: "eval_temp".to_string(),
         current_board,
         history,
         statistics: HashMap::new(),
         global_map: Arc::clone(&state.global_map),
+        transposition_table,
     };
 
     let board = engine.current_board.clone();

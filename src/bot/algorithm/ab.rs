@@ -52,25 +52,38 @@ pub fn alpha_beta(
     }
 
     *nodes += 1;
-
-    // Track maximum depth reached
     *max_depth_reached = (*max_depth_reached).max(current_depth);
 
     let board_hash = board.get_hash();
     let repetition_count = engine_state.history.get(&board_hash).copied().unwrap_or(0);
     let prioritized_moves = get_prioritized_moves(board, is_noisy);
 
+    {
+        let mut tt = engine_state.transposition_table.lock().unwrap();
+        if let Some(cached_eval) = tt.get(&(board_hash, depth)) {
+            return (None, *cached_eval);
+        }
+    }
+
     match board.status() {
         chess::BoardStatus::Checkmate => {
             let eval = evaluate_board(board);
             let depth_weight = 20 - current_depth.min(20);
             let score = (eval * ((depth_weight as i32) + 1)).clamp(-500_000, 500_000);
+
+            // ✅ Save to TT
+            engine_state.transposition_table.lock().unwrap().put((board_hash, depth), score);
+
             return (None, score);
         }
         chess::BoardStatus::Stalemate => {
+            engine_state.transposition_table.lock().unwrap().put((board_hash, depth), 0);
+
             return (None, 0);
         }
         _ if repetition_count >= 3 => {
+            engine_state.transposition_table.lock().unwrap().put((board_hash, depth), 0);
+
             return (None, 0);
         }
         _ if !is_noisy && depth == 0 => {
@@ -82,7 +95,7 @@ pub fn alpha_beta(
                 nodes,
                 deadline,
                 engine_state,
-                current_depth-1,
+                current_depth - 1,
                 true,
                 current_depth + 1,
                 max_depth_reached
@@ -90,6 +103,8 @@ pub fn alpha_beta(
         }
         _ if is_noisy && (prioritized_moves.is_empty() || depth == 0) => {
             let eval = evaluate_board(board);
+            engine_state.transposition_table.lock().unwrap().put((board_hash, depth), eval);
+
             return (None, eval);
         }
         _ => {}
@@ -147,6 +162,8 @@ pub fn alpha_beta(
             break;
         }
     }
+
+    engine_state.transposition_table.lock().unwrap().put((board_hash, depth), best_eval);
 
     (best_move, best_eval)
 }

@@ -2,56 +2,49 @@ use std::{ fs, io::{ self, Write }, path::Path, sync::Arc };
 
 use flate2::read::GzDecoder;
 use once_cell::sync::Lazy;
-use serde_json::Value;
 use tar::Archive;
 
-use crate::bot::include::types::GlobalMap;
+use crate::bot::include::types::{ GlobalMap, OpeningBook };
 
 const COMPRESSED_OPENING_DB: &[u8] = include_bytes!("../../data/openings.tar.gz");
 
-fn read_opening_db() -> Result<Value, io::Error> {
+pub fn read_opening_db() -> Result<OpeningBook, io::Error> {
     let output_dir = Path::new("./db");
     let compressed_path = output_dir.join("openings.tar.gz");
     let file_path = output_dir.join("openingDB.json");
 
-    // If file doesn't exist, extract from embedded archive
     if !file_path.exists() {
         println!("OpeningDB not found, extracting...");
 
         fs::create_dir_all(output_dir)?;
 
-        // Write embedded tar.gz to disk
         {
             let mut file = fs::File::create(&compressed_path)?;
             file.write_all(COMPRESSED_OPENING_DB)?;
         }
 
-        // Extract tar.gz
         let tar_file = fs::File::open(&compressed_path)?;
         let tar = GzDecoder::new(tar_file);
         let mut archive = Archive::new(tar);
         archive.unpack(output_dir)?;
 
-        // Clean up
         fs::remove_file(&compressed_path)?;
         println!("OpeningDB extracted to {:?}", file_path);
     }
 
-    // Read and parse JSON
     let file_content = fs::read_to_string(&file_path)?;
-    let json_data: Value = serde_json
+    let db: OpeningBook = serde_json
         ::from_str(&file_content)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
-    Ok(json_data)
+    Ok(db)
 }
-
-pub const OPENING_DB: Lazy<Arc<Value>> = Lazy::new(|| {
+pub static OPENING_DB: Lazy<Arc<OpeningBook>> = Lazy::new(|| {
     Arc::new(read_opening_db().expect("Failed to load opening DB"))
 });
 
 impl GlobalMap {
-    pub fn opening_db() -> Arc<Value> {
+    pub fn opening_db() -> Arc<OpeningBook> {
         Arc::clone(&OPENING_DB)
     }
 
