@@ -124,12 +124,6 @@ impl BoardExt for Board {
             tactical_bonus += 40;
         }
 
-        if let Some(piece) = self.piece_on(mv.get_source()) {
-            if piece == Piece::Pawn {
-                tactical_bonus += 10;
-            }
-        }
-
         tactical_bonus + capture_value_sum / 10
     }
 

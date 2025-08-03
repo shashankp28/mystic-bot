@@ -1,13 +1,17 @@
 use axum::{ extract::{ State, Json }, response::IntoResponse, http::StatusCode };
 use serde::{ Deserialize, Serialize };
-use std::{ collections::HashMap, str::FromStr, sync::{ Arc, Mutex } };
+use std::{ str::FromStr, sync::Arc};
 use chess::Board;
 use crate::bot::{
     algorithm::root::search,
-    include::types::{ EngineState, ServerState, TT_TABLE_SIZE },
+    include::types::{
+        EngineState,
+        RepetitionHistory,
+        ServerState,
+        TranspositionTable,
+        TT_TABLE_SIZE,
+    },
 };
-use lru::LruCache;
-use std::num::NonZeroUsize;
 
 #[derive(Debug, Deserialize)]
 pub struct EvalRequest {
@@ -46,27 +50,26 @@ pub async fn eval_position_handler(
         }
     };
 
-    let mut history: HashMap<u64, u32> = HashMap::new();
+    let mut history = RepetitionHistory::new();
     for fen in &payload.history {
         if let Ok(board) = Board::from_str(fen) {
             let hash = board.get_hash();
-            *history.entry(hash).or_insert(0) += 1;
+            history.increment(hash);
         }
     }
 
-    let capacity = NonZeroUsize::new(TT_TABLE_SIZE).unwrap();
-    let transposition_table = Arc::new(Mutex::new(LruCache::new(capacity)));
+    let transposition_table = TranspositionTable::new(TT_TABLE_SIZE);
+
     let mut engine = EngineState {
         game_id: "eval_temp".to_string(),
         current_board,
         history,
-        statistics: HashMap::new(),
+        statistics: Default::default(),
         global_map: Arc::clone(&state.global_map),
         transposition_table,
     };
 
     let board = engine.current_board.clone();
-    // Default time values — can tweak or make them params if needed
     let (best_move, nodes, time_taken_ms, eval, depth) = search(
         payload.time_left_ms,
         payload.time_limit_ms,

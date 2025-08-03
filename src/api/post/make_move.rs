@@ -55,7 +55,7 @@ pub async fn make_move_handler(
 
     engine.current_board = engine.current_board.make_move_new(chess_move);
     let hash = engine.current_board.get_hash();
-    *engine.history.entry(hash).or_insert(0) += 1;
+    engine.history.increment(hash);
 
     let new_fen = engine.current_board.to_string();
 

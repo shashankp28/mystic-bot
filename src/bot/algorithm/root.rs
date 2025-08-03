@@ -1,9 +1,39 @@
-use chess::{ Board, ChessMove };
+use chess::{ Board, ChessMove, MoveGen };
 use std::time::{ Duration, Instant };
-use crate::bot::algorithm::ab::alpha_beta;
+use crate::bot::algorithm::negamax::negamax; // assumes renamed or placed negamax in the module
 use crate::bot::algorithm::eval::evaluate_board;
+use crate::bot::include::types::SpecialMove;
 use crate::bot::util::lookup::lookup_opening_db;
-use crate::bot::{ include::types::{ EngineState } };
+use crate::bot::include::types::EngineState;
+use crate::bot::util::board::BoardExt;
+use crate::bot::util::piece::piece_value;
+
+pub fn get_prioritized_moves(board: &Board, only_noise: bool) -> Vec<(ChessMove, i32)> {
+    let mut move_priority_pairs = Vec::new();
+
+    for mv in MoveGen::new_legal(board) {
+        if only_noise {
+            let move_tags = board.classify_move(mv);
+            if
+                !move_tags.contains(&SpecialMove::Promotion) &&
+                !move_tags.contains(&SpecialMove::Capture)
+            {
+                continue;
+            }
+            if let Some((attacker, victim)) = board.capture_pieces(mv) {
+                if piece_value(victim) < piece_value(attacker) {
+                    continue;
+                }
+            }
+        }
+
+        let priority = board.move_priority(mv);
+        move_priority_pairs.push((mv, priority));
+    }
+
+    move_priority_pairs.sort_by(|a, b| b.1.cmp(&a.1));
+    move_priority_pairs
+}
 
 pub fn search(
     time_left_ms: u128,
@@ -11,7 +41,7 @@ pub fn search(
     board: &Board,
     engine_state: &mut EngineState
 ) -> (Option<ChessMove>, u64, u128, i32, u8) {
-    // Try Opening DB first
+    // Opening DB fallback
     let start_time = Instant::now();
     if let Some(chess_move) = lookup_opening_db(board) {
         return (
@@ -29,27 +59,29 @@ pub fn search(
         .min(time_left_ms)
         .min(40_000);
     let deadline = start_time + Duration::from_millis(max_time as u64);
-    let mut final_depth = 0;
 
+    let mut final_depth = 0;
     let mut best_move = None;
     let mut best_eval = 0;
     let mut total_nodes = 0;
 
+    let color = if board.side_to_move() == chess::Color::White { 1 } else { -1 };
+
     for depth in 1..=64 {
         let mut nodes = 0;
         let mut max_depth = 0;
-        let (mv, eval) = alpha_beta(
-            &board,
+
+        let (mv, eval) = negamax(
+            board,
             i32::MIN + 1,
             i32::MAX - 1,
-            board.side_to_move() == chess::Color::White,
             &mut nodes,
             deadline,
             engine_state,
             depth,
-            false,
             0,
-            &mut max_depth
+            &mut max_depth,
+            color
         );
 
         if Instant::now() >= deadline {
@@ -62,7 +94,7 @@ pub fn search(
             total_nodes += nodes;
             final_depth = max_depth;
         } else {
-            break; // Timeout hit
+            break;
         }
     }
 

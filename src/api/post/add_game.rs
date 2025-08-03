@@ -1,8 +1,13 @@
 use axum::{ extract::State, response::IntoResponse, Json, http::StatusCode };
-use lru::LruCache;
 use serde::{ Deserialize, Serialize };
-use std::{ collections::HashMap, num::NonZeroUsize, str::FromStr, sync::{ Arc, Mutex } };
-use crate::bot::include::types::{ EngineState, ServerState, TT_TABLE_SIZE };
+use std::{ collections::HashMap, str::FromStr, sync::Arc };
+use crate::bot::include::types::{
+    EngineState,
+    RepetitionHistory,
+    ServerState,
+    TranspositionTable,
+    TT_TABLE_SIZE,
+};
 use chess::Board;
 
 #[derive(Debug, Deserialize)]
@@ -43,16 +48,16 @@ pub async fn new_game_handler(
         }
     };
 
-    let mut history: HashMap<u64, u32> = HashMap::new();
+    // ✅ Use the new RepetitionHistory wrapper
+    let mut history = RepetitionHistory::new();
     for fen in &payload.history {
         if let Ok(board) = Board::from_str(fen) {
             let hash = board.get_hash();
-            *history.entry(hash).or_insert(0) += 1;
+            history.increment(hash);
         }
     }
 
-    let capacity = NonZeroUsize::new(TT_TABLE_SIZE).unwrap();
-    let transposition_table = Arc::new(Mutex::new(LruCache::new(capacity)));
+    let transposition_table = TranspositionTable::new(TT_TABLE_SIZE);
     let engine = EngineState {
         game_id: payload.game_id.clone(),
         current_board,
