@@ -102,6 +102,7 @@ The bot implements a search algorithm using a combination of:
 - **Iterative Deepening**: Calculates different depths based on time available
 - **Alpha-beta pruning**: Prunes unnecessary branches in the search tree.
 - **Move Ordering**: Orders moves based on checks / captures / attacks, to aid AB pruning
+- **Quiet Search**: Run search until position is not noisy, before static eval
 
 Key features:
 
