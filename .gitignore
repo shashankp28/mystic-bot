@@ -193,3 +193,4 @@ tmp/
 *.csv
 *.html
 *zip
+pgn/

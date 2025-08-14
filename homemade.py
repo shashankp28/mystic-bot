@@ -110,7 +110,7 @@ class MysticBot(ExampleEngine):
         self.timeout = 60  # Not used
         self.timeRemaining = 0
         self.fenVals = []
-        self.server_url = "http://localhost:8080"
+        self.server_url = "http://localhost:2832"
 
     def set_chess_board(self, board: chess.Board):
         self.chessBoard = board

@@ -1,24 +1,28 @@
 use std::collections::HashSet;
-use chess::{ Board, ChessMove, MoveGen, Piece };
-use crate::bot::{ include::types::SpecialMove, util::piece::piece_value };
+use chess::{ Board, ChessMove, File, MoveGen, Piece };
+use crate::bot::{
+    include::types::{
+        SpecialMove,
+        CAPTURE_BONUS,
+        CASTLING_BONUS,
+        CHECK_BONUS,
+        ENDGAME_MATERIALS,
+        PROMOTION_BONUS,
+    },
+    util::piece::piece_value,
+};
 
 pub trait BoardExt {
     fn classify_move(&self, mv: ChessMove) -> HashSet<SpecialMove>;
     fn piece_moved(&self, mv: ChessMove) -> Option<Piece>;
     fn is_en_passant(&self, mv: ChessMove) -> bool;
     fn is_attack(&self, mv: ChessMove) -> bool;
-    fn is_quiet_position(&self) -> bool;
     fn move_priority(&self, mv: ChessMove) -> i32;
     fn halfmove_clock(&self) -> u32;
     fn capture_pieces(&self, mv: ChessMove) -> Option<(Piece, Piece)>;
     fn material_score(&self, color: chess::Color) -> i32;
-}
-
-pub fn is_noisy(classification: &HashSet<SpecialMove>) -> bool {
-    classification.contains(&SpecialMove::Check) ||
-        classification.contains(&SpecialMove::Capture) ||
-        classification.contains(&SpecialMove::Promotion) ||
-        classification.contains(&SpecialMove::EnPassant)
+    fn noiseness(&self) -> i32;
+    fn is_endgame(&self) -> bool;
 }
 
 impl BoardExt for Board {
@@ -43,6 +47,19 @@ impl BoardExt for Board {
 
         if self.is_attack(mv) {
             result.insert(SpecialMove::Attack);
+        }
+
+        if let Some(piece) = self.piece_on(mv.get_source()) {
+            if piece == Piece::King {
+                let src_file = mv.get_source().get_file();
+                let dst_file = mv.get_dest().get_file();
+                // Assuming standard chess coordinates (file e to g or c)
+                if src_file == File::E && dst_file == File::G {
+                    result.insert(SpecialMove::CastleKingside);
+                } else if src_file == File::E && dst_file == File::C {
+                    result.insert(SpecialMove::CastleQueenside);
+                }
+            }
         }
 
         result
@@ -73,21 +90,11 @@ impl BoardExt for Board {
         }
     }
 
-    fn is_quiet_position(&self) -> bool {
-        for mv in MoveGen::new_legal(self) {
-            let tags = self.classify_move(mv);
-            if is_noisy(&tags) {
-                return false;
-            }
-        }
-        true
-    }
-
     fn move_priority(&self, mv: ChessMove) -> i32 {
         let mut has_check = false;
         let mut has_promotion = false;
         let mut has_capture = false;
-        let mut is_noisy_flag = false;
+        let mut has_castling = false;
         let mut capture_value_sum = 0;
 
         let tags = self.classify_move(mv);
@@ -106,25 +113,34 @@ impl BoardExt for Board {
             };
             capture_value_sum += captured_value;
         }
-        if is_noisy(&tags) {
-            is_noisy_flag = true;
+        if
+            tags.contains(&SpecialMove::CastleKingside) ||
+            tags.contains(&SpecialMove::CastleQueenside)
+        {
+            has_castling = true;
         }
 
         let mut tactical_bonus = 0;
-        if is_noisy_flag {
-            tactical_bonus += 50;
-        }
         if has_check {
-            tactical_bonus += 30;
+            tactical_bonus += CHECK_BONUS;
         }
         if has_promotion {
-            tactical_bonus += 80;
+            tactical_bonus += PROMOTION_BONUS;
         }
         if has_capture {
-            tactical_bonus += 40;
+            tactical_bonus += CAPTURE_BONUS;
+        }
+        if has_castling {
+            tactical_bonus += CASTLING_BONUS;
         }
 
-        tactical_bonus + capture_value_sum / 10
+        tactical_bonus + capture_value_sum
+    }
+
+    fn noiseness(&self) -> i32 {
+        MoveGen::new_legal(self)
+            .map(|mv| self.move_priority(mv))
+            .sum()
     }
 
     fn halfmove_clock(&self) -> u32 {
@@ -169,5 +185,11 @@ impl BoardExt for Board {
         }
 
         score
+    }
+
+    fn is_endgame(&self) -> bool {
+        let white_material = self.material_score(chess::Color::White);
+        let black_material = self.material_score(chess::Color::Black);
+        return white_material + black_material < ENDGAME_MATERIALS;
     }
 }

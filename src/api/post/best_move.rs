@@ -1,24 +1,25 @@
-use axum::{ extract::State, http::StatusCode, response::IntoResponse, Json };
+use axum::{ extract::{ State, Json }, http::StatusCode, response::IntoResponse };
 use serde::{ Deserialize, Serialize };
-use std::{ time::Instant };
+use std::time::Instant;
 use crate::bot::{ algorithm::root::search, include::types::{ ServerState, Statistics } };
 
 #[derive(Debug, Deserialize)]
 pub struct BestMoveQuery {
-    game_id: String,
-    time_left_ms: u128,
-    time_limit_ms: Option<u128>,
-    update_state: Option<bool>,
+    pub game_id: String,
+    pub time_left_ms: u128,
+    pub time_limit_ms: Option<u128>,
+    pub update_state: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct BestMoveResponse {
-    best_move: Option<String>,
-    eval: i32,
-    nodes: u64,
-    time: u128,
-    depth: u8,
-    new_position: String,
+    pub best_move: String,
+    pub line: Vec<String>, // Full principal variation
+    pub eval: i32,
+    pub nodes: u64,
+    pub time: u128,
+    pub depth: u8,
+    pub new_position: String,
 }
 
 pub async fn best_move_handler(
@@ -29,7 +30,8 @@ pub async fn best_move_handler(
         return (
             StatusCode::NOT_FOUND,
             Json(BestMoveResponse {
-                best_move: None,
+                best_move: String::new(),
+                line: vec![],
                 eval: 0,
                 nodes: 0,
                 time: 0,
@@ -42,27 +44,28 @@ pub async fn best_move_handler(
     let now = Instant::now();
     let board = engine.current_board.clone();
 
-    let (best_move, nodes, time, eval, depth) = search(
+    // search returns (Vec<ChessMove>, u64, u128, i32, u8)
+    let (line, nodes, _, eval, depth) = search(
         params.time_left_ms,
         params.time_limit_ms,
         &board,
         &mut engine
     );
-
     let time_taken_ms = now.elapsed().as_millis();
 
     let mut new_position = engine.current_board.to_string();
-    // Update engine state statistics if requested
+
+    let best_move_str = line.first().map_or(String::new(), |m| m.to_string());
+
     if params.update_state.unwrap_or(false) {
-        // Update cumulative statistics under a fixed key (e.g., 0)
         let key = engine.current_board.get_hash();
         engine.statistics.entry(key).or_insert(Statistics {
             nodes_explored: nodes,
-            time_taken_ms: time_taken_ms,
+            time_taken_ms,
         });
-        if let Some(best) = best_move {
-            // Update the current board with the selected move
-            let new_board = engine.current_board.make_move_new(best);
+
+        if let Some(first_move) = line.first() {
+            let new_board = engine.current_board.make_move_new(*first_move);
             engine.current_board = new_board;
             new_position = engine.current_board.to_string();
         }
@@ -71,10 +74,14 @@ pub async fn best_move_handler(
     (
         StatusCode::OK,
         Json(BestMoveResponse {
-            best_move: best_move.map(|m| m.to_string()),
+            best_move: best_move_str,
+            line: line
+                .iter()
+                .map(|m| m.to_string())
+                .collect(),
             eval,
             nodes,
-            time,
+            time: time_taken_ms,
             depth,
             new_position,
         }),

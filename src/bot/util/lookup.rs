@@ -7,7 +7,7 @@ use crate::bot::include::types::{ OpeningEntry, RepetitionHistory, TTEntry, Tran
 use crate::bot::util::moves::parse_uci_move;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
-use std::sync::{Arc, Mutex};
+use std::sync::{ Arc, Mutex };
 
 pub fn lookup_opening_db(board: &Board) -> Option<ChessMove> {
     let board_hash = board.get_hash();

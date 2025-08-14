@@ -1,8 +1,5 @@
 use chess::{ Board, ChessMove, Color, File, Piece, Rank, Square };
-use crate::bot::{
-    include::types::{ BoundType, EngineState, GlobalMap, TTEntry },
-    util::{ board::BoardExt, piece::piece_value },
-};
+use crate::bot::{ include::types::*, util::board::BoardExt };
 
 fn distance_between(a: Square, b: Square) -> u8 {
     let file_distance = ((a.get_file().to_index() as i8) - (b.get_file().to_index() as i8)).abs();
@@ -10,7 +7,12 @@ fn distance_between(a: Square, b: Square) -> u8 {
     (file_distance + rank_distance) as u8
 }
 
-fn evaluate_king_proximity(board: &Board, is_endgame: bool) -> i32 {
+fn evaluate_king_proximity(
+    board: &Board,
+    is_endgame: bool,
+    white_base: i32,
+    black_base: i32
+) -> i32 {
     if is_endgame {
         let white_king_sq = (board.pieces(Piece::King) & board.color_combined(Color::White))
             .into_iter()
@@ -22,8 +24,12 @@ fn evaluate_king_proximity(board: &Board, is_endgame: bool) -> i32 {
             .unwrap();
 
         let proximity = distance_between(white_king_sq, black_king_sq) as i32;
-        // Closer kings in endgame is generally good
-        return 14 - proximity;
+        let score = KING_PROXIMITY_BASE + (KING_PROXIMITY_MAX_DISTANCE - proximity);
+        if white_base > black_base + KING_PROXIMITY_SCORE_THRESHOLD {
+            return score;
+        } else if black_base > white_base + KING_PROXIMITY_SCORE_THRESHOLD {
+            return -score;
+        }
     }
     0
 }
@@ -42,13 +48,13 @@ fn evaluate_connected_pawns(board: &Board) -> i32 {
 
             let connected = [-1, 1].iter().any(|&df| {
                 let f = (file as isize) + df;
-                if f < 0 || f > 7 {
+                if f < 0 || f >= (BOARD_FILES as isize) {
                     return false;
                 }
 
                 [-1, 0, 1].iter().any(|&dr| {
                     let r = (rank as isize) + dr;
-                    if r < 0 || r > 7 {
+                    if r < 0 || r >= (BOARD_RANKS as isize) {
                         return false;
                     }
 
@@ -61,7 +67,7 @@ fn evaluate_connected_pawns(board: &Board) -> i32 {
             });
 
             if connected {
-                score += if color == White { 5 } else { -5 };
+                score += if color == White { CONNECTED_PAWN_BONUS } else { -CONNECTED_PAWN_BONUS };
             }
         }
     }
@@ -83,13 +89,13 @@ pub fn evaluate_passed_pawns(board: &Board) -> i32 {
             let rank_idx = sq.get_rank().to_index();
             let file_idx = sq.get_file().to_index();
 
-            let file_range = file_idx.saturating_sub(1)..=(file_idx + 1).min(7);
+            let file_range = file_idx.saturating_sub(1)..=(file_idx + 1).min(BOARD_FILES - 1);
 
             let is_passed = file_range.clone().all(|f| {
                 let file = File::from_index(f);
                 match color {
                     White =>
-                        (rank_idx + 1..=7).all(|r| {
+                        (rank_idx + 1..BOARD_RANKS).all(|r| {
                             let sq = Square::make_square(Rank::from_index(r), file);
                             board.piece_on(sq) != Some(Pawn) ||
                                 board.color_on(sq) != Some(opponent_color)
@@ -105,10 +111,45 @@ pub fn evaluate_passed_pawns(board: &Board) -> i32 {
 
             if is_passed {
                 let bonus = match color {
-                    White => 5 + 5 * (rank_idx as i32),
-                    Black => -5 - 5 * ((7 - rank_idx) as i32),
+                    White =>
+                        PASSED_PAWN_BASE_BONUS + PASSED_PAWN_RANK_MULTIPLIER * (rank_idx as i32),
+                    Black =>
+                        -PASSED_PAWN_BASE_BONUS -
+                            PASSED_PAWN_RANK_MULTIPLIER * ((BOARD_RANKS - 1 - rank_idx) as i32),
                 };
                 score += bonus;
+            }
+        }
+    }
+
+    score
+}
+
+pub fn evaluate_doubled_pawns(board: &Board) -> i32 {
+    use Color::{ White, Black };
+    use Piece::Pawn;
+
+    let mut score = 0;
+
+    for &color in &[White, Black] {
+        let pawns = board.pieces(Pawn) & board.color_combined(color);
+
+        // Count how many pawns are in each file
+        let mut file_pawn_counts = [0; BOARD_FILES];
+
+        for sq in pawns {
+            let file_idx = sq.get_file().to_index();
+            file_pawn_counts[file_idx] += 1;
+        }
+
+        // Penalize doubled pawns (more than one pawn on the same file)
+        for &count in &file_pawn_counts {
+            if count > 1 {
+                let penalty = DOUBLED_PAWN_PENALTY * (count as i32);
+                score += match color {
+                    White => -penalty,
+                    Black => penalty,
+                };
             }
         }
     }
@@ -119,7 +160,7 @@ pub fn evaluate_passed_pawns(board: &Board) -> i32 {
 pub fn evaluate_board(board: &Board) -> i32 {
     use chess::{ Piece::*, Color::* };
 
-    if board.halfmove_clock() >= 100 {
+    if board.halfmove_clock() >= HALF_MOVE_DRAW_LIMIT {
         return 0;
     }
 
@@ -175,7 +216,15 @@ pub fn evaluate_board(board: &Board) -> i32 {
     }
 
     let mut score = 0;
-    let is_endgame = white_material + black_material < 1600;
+    let is_endgame = white_material + black_material < ENDGAME_MATERIALS;
+
+    // Base score
+    if !is_minor_or_lone(white_total, white_bishops, white_knights) {
+        score += white_material;
+    }
+    if !is_minor_or_lone(black_total, black_bishops, black_knights) {
+        score -= black_material;
+    }
 
     for sq in chess::ALL_SQUARES {
         if let Some(piece) = board.piece_on(sq) {
@@ -183,10 +232,9 @@ pub fn evaluate_board(board: &Board) -> i32 {
             let (rank, file) = (sq.get_rank().to_index(), sq.get_file().to_index());
             let (row, col) = match color {
                 White => (rank, file),
-                Black => (7 - rank, file),
+                Black => (BOARD_RANKS - 1 - rank, file),
             };
 
-            let base = piece_value(piece);
             let positional = match piece {
                 Pawn => GlobalMap::PAWN_TABLE[row][col],
                 Knight => GlobalMap::KNIGHT_TABLE[row][col],
@@ -203,70 +251,44 @@ pub fn evaluate_board(board: &Board) -> i32 {
             };
 
             if color == White {
-                if !is_minor_or_lone(white_total, white_bishops, white_knights) {
-                    score += base;
-                }
                 score += positional;
             } else {
-                if !is_minor_or_lone(black_total, black_bishops, black_knights) {
-                    score -= base;
-                }
                 score -= positional;
             }
         }
     }
 
+    // Bishop pair bonus
+    if white_bishops >= 2 {
+        score += BISHOP_PAIR_BONUS;
+    }
+    if black_bishops >= 2 {
+        score -= BISHOP_PAIR_BONUS;
+    }
     score += evaluate_connected_pawns(board);
     score += evaluate_passed_pawns(board);
-    score += evaluate_king_proximity(board, is_endgame);
-
+    score += evaluate_doubled_pawns(board);
+    score += evaluate_king_proximity(board, is_endgame, white_material, black_material);
     score
 }
 
 pub fn is_terminal(
     board: &Board,
-    board_hash: u64,
-    depth: u8,
     current_depth: u8,
-    color: i32,
-    repetition_count: u32,
-    engine_state: &mut EngineState
+    repetition_count: u32
 ) -> Option<(Option<ChessMove>, i32)> {
     match board.status() {
         chess::BoardStatus::Checkmate => {
-            let base_score = 1_000_000 - (current_depth as i32);
+            let base_score = MATE_SCORE_BASE - (current_depth as i32);
             let mate_score = if board.side_to_move() == chess::Color::White {
                 -base_score
             } else {
                 base_score
             };
-            let score = mate_score * color;
-            engine_state.transposition_table.put((board_hash, depth), TTEntry {
-                value: score,
-                depth,
-                flag: BoundType::Exact,
-                best_move: None,
-            });
-            Some((None, score))
+            Some((None, mate_score))
         }
-        chess::BoardStatus::Stalemate => {
-            engine_state.transposition_table.put((board_hash, depth), TTEntry {
-                value: 0,
-                depth,
-                flag: BoundType::Exact,
-                best_move: None,
-            });
-            Some((None, 0))
-        }
-        _ if repetition_count >= 3 => {
-            engine_state.transposition_table.put((board_hash, depth), TTEntry {
-                value: 0,
-                depth,
-                flag: BoundType::Exact,
-                best_move: None,
-            });
-            Some((None, 0))
-        }
+        chess::BoardStatus::Stalemate => { Some((None, 0)) }
+        _ if repetition_count >= 3 => { Some((None, 0)) }
         _ => None,
     }
 }

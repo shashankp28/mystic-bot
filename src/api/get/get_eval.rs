@@ -1,6 +1,6 @@
 use axum::{ extract::{ State, Json }, response::IntoResponse, http::StatusCode };
 use serde::{ Deserialize, Serialize };
-use std::{ str::FromStr, sync::Arc};
+use std::{ str::FromStr, sync::Arc, time::Instant };
 use chess::Board;
 use crate::bot::{
     algorithm::root::search,
@@ -17,17 +17,18 @@ use crate::bot::{
 pub struct EvalRequest {
     pub current_fen: String,
     pub history: Vec<String>,
-    time_left_ms: u128,
-    time_limit_ms: Option<u128>,
+    pub time_left_ms: u128,
+    pub time_limit_ms: Option<u128>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct BestMoveResponse {
-    pub best_move: Option<String>,
-    pub eval: i32,
-    pub nodes: u64,
-    pub time: u128,
-    pub depth: u8,
+    pub best_move: String,
+    pub line: Vec<String>, // Full principal variation in UCI format
+    pub eval: i32, // Evaluation score
+    pub nodes: u64, // Total nodes searched
+    pub time: u128, // Time taken in milliseconds
+    pub depth: u8, // Maximum search depth reached
 }
 
 pub async fn eval_position_handler(
@@ -35,12 +36,13 @@ pub async fn eval_position_handler(
     Json(payload): Json<EvalRequest>
 ) -> impl IntoResponse {
     let current_board = match Board::from_str(&payload.current_fen) {
-        Ok(b) => b,
+        Ok(board) => board,
         Err(_) => {
             return (
                 StatusCode::BAD_REQUEST,
                 Json(BestMoveResponse {
-                    best_move: None,
+                    best_move: String::new(),
+                    line: vec![],
                     eval: 0,
                     nodes: 0,
                     time: 0,
@@ -50,10 +52,11 @@ pub async fn eval_position_handler(
         }
     };
 
+    // Reconstruct repetition history
     let mut history = RepetitionHistory::new();
     for fen in &payload.history {
-        if let Ok(board) = Board::from_str(fen) {
-            let hash = board.get_hash();
+        if let Ok(past_board) = Board::from_str(fen) {
+            let hash = past_board.get_hash();
             history.increment(hash);
         }
     }
@@ -69,18 +72,26 @@ pub async fn eval_position_handler(
         transposition_table,
     };
 
+    let start_time = Instant::now();
     let board = engine.current_board.clone();
-    let (best_move, nodes, time_taken_ms, eval, depth) = search(
+    let (line, nodes, _, eval, depth) = search(
         payload.time_left_ms,
         payload.time_limit_ms,
         &board,
         &mut engine
     );
+    let time_taken_ms = start_time.elapsed().as_millis();
+
+    let best_move_str = line.first().map_or(String::new(), |m| m.to_string());
 
     (
         StatusCode::OK,
         Json(BestMoveResponse {
-            best_move: best_move.map(|m| m.to_string()),
+            best_move: best_move_str,
+            line: line
+                .iter()
+                .map(|m| m.to_string())
+                .collect(),
             eval,
             nodes,
             time: time_taken_ms,
