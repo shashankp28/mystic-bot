@@ -101,13 +101,17 @@ The bot implements a search algorithm using a combination of:
 - **Dynamic time keeping**: Plays slower if more time is available, and faster if less
 - **Iterative Deepening**: Calculates different depths based on time available
 - **Alpha-beta pruning**: Prunes unnecessary branches in the search tree.
-- **Move Ordering**: Orders moves based on checks / captures / attacks, to aid AB pruning
+- **Move Ordering**: Orders moves based on checks / captures / attacks / castle, to aid AB pruning
 - **Quiet Search**: Run search until position is not noisy, before static eval
+- **Bonus**: Static bonus such as: Double Bishop, connected pawns, passed pawns, etc.
+- **Penalty**: Static penalty such as: doubled pawns, king cornered, etc.
 
 Key features:
 
 - Evaluates **300,000+** positions per second on an average.
 - Evaluates to **5-6+** positional game depth.
+- Evaluates **5-6** noisy depth, using quiet search
+- Multi-threading to evaluate multiple positions in parallel
 - Dynamically adjusts search depth:
   - **Midgames**: Searches to a depth of **5–6 moves**.
   - **Endgames**: Increases search depth to **10-11 moves**.
