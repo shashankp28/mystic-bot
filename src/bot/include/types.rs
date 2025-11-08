@@ -71,30 +71,40 @@ pub struct RepetitionHistory {
     pub inner: HashMap<u64, u32>,
 }
 
-// Constants
-pub const ENDGAME_MATERIALS: i32 = 1600;
-pub const CHECK_BONUS: i32 = 30;
-pub const PROMOTION_BONUS: i32 = 80;
-pub const CAPTURE_BONUS: i32 = 40;
-pub const KING_PROXIMITY_BASE: i32 = 11;
-pub const KING_PROXIMITY_MAX_DISTANCE: i32 = 14;
-pub const KING_PROXIMITY_SCORE_THRESHOLD: i32 = 300;
-pub const CONNECTED_PAWN_BONUS: i32 = 5;
-pub const PASSED_PAWN_BASE_BONUS: i32 = 5;
-pub const PASSED_PAWN_RANK_MULTIPLIER: i32 = 5;
-pub const DOUBLED_PAWN_PENALTY: i32 = 20;
-pub const BISHOP_PAIR_BONUS: i32 = 40;
-pub const HALF_MOVE_DRAW_LIMIT: u32 = 100;
-pub const MATE_SCORE_BASE: i32 = 1_000_000;
-pub const BOARD_FILES: usize = 8;
-pub const BOARD_RANKS: usize = 8;
-pub const MAX_NOISE: f32 = 2500.0;
-pub const MAX_THINK_TIME_MS: u128 = 40_000;
-pub const QUIET_FALL_SHARPNESS: f32 = 1.0;
+// CONSTANTS
+// Piece base scores
 pub const PAWN_BASE: i32 = 100;
 pub const KNIGHT_BASE: i32 = 300;
 pub const BISHOP_BASE: i32 = 350;
 pub const ROOK_BASE: i32 = 500;
 pub const QUEEN_BASE: i32 = 900;
 pub const KING_BASE: i32 = 0;
+pub const MATE_SCORE_BASE: i32 = 1_000_000;
+
+// Move priority
+pub const CHECK_BONUS: i32 = 80;
+pub const CAPTURE_BONUS: i32 = 70;
+pub const PROMOTION_BONUS: i32 = 60;
 pub const CASTLING_BONUS: i32 = 50;
+
+// King endgame
+pub const KING_PROXIMITY_BASE: i32 = 11;
+pub const KING_PROXIMITY_MAX_DISTANCE: i32 = 14;
+pub const KING_PROXIMITY_SCORE_THRESHOLD: i32 = 300;
+
+// Extra bonus
+pub const CONNECTED_PAWN_BONUS: i32 = 5;
+pub const PASSED_PAWN_BASE_BONUS: i32 = 5;
+pub const PASSED_PAWN_RANK_MULTIPLIER: i32 = 5;
+pub const DOUBLED_PAWN_PENALTY: i32 = 20;
+pub const BISHOP_PAIR_BONUS: i32 = 40;
+pub const NUM_PIECE_BONUS: i32 = 5;
+
+// Misc.
+pub const ENDGAME_MATERIALS: i32 = 1600;
+pub const HALF_MOVE_DRAW_LIMIT: u32 = 100;
+pub const BOARD_FILES: usize = 8;
+pub const BOARD_RANKS: usize = 8;
+pub const MAX_NOISE: f32 = 2500.0;
+pub const MAX_THINK_TIME_MS: u128 = 40_000;
+pub const QUIET_FALL_SHARPNESS: f32 = 1.0;
