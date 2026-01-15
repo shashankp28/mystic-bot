@@ -30,72 +30,76 @@ pub struct BestMoveResponse {
     pub time: u128, // Time taken in milliseconds
     pub depth: u8, // Maximum search depth reached
 }
-
 pub async fn eval_position_handler(
     State(state): State<ServerState>,
     Json(payload): Json<EvalRequest>
 ) -> impl IntoResponse {
-    let current_board = match Board::from_str(&payload.current_fen) {
-        Ok(board) => board,
+    // 1. Setup the Board
+    let board = match Board::from_str(&payload.current_fen) {
+        Ok(b) => b,
         Err(_) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(BestMoveResponse {
-                    best_move: String::new(),
-                    line: vec![],
-                    eval: 0,
-                    nodes: 0,
-                    time: 0,
-                    depth: 0,
-                }),
-            );
+            return (StatusCode::BAD_REQUEST, Json(create_empty_response())).into_response();
         }
     };
 
-    // Reconstruct repetition history
-    let mut history = RepetitionHistory::new();
-    for fen in &payload.history {
-        if let Ok(past_board) = Board::from_str(fen) {
-            let hash = past_board.get_hash();
-            history.increment(hash);
+    // 2. Setup the Transposition Table
+    let tt = TranspositionTable {
+        inner: Arc::new(
+            std::sync::Mutex::new(
+                lru::LruCache::new(std::num::NonZeroUsize::new(TT_TABLE_SIZE).unwrap())
+            )
+        ),
+    };
+
+    // 3. START the background engine search immediately
+    let search_handle = start_background_search(board, tt.clone());
+    let start_instant = Instant::now();
+
+    // 4. WAIT for exactly 5 seconds (without blocking the server)
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+    // 5. STOP the search and JOIN the thread
+    search_handle.stop.store(true, std::sync::atomic::Ordering::SeqCst);
+
+    // We move the handle out to join it
+    let _ = search_handle.handle.join();
+
+    // 6. EXTRACT the final results from the Mutex
+    let final_snapshot = search_handle.best.lock().unwrap().clone();
+
+    // 7. Cleanup is automatic here: search_handle and tt go out of scope and are dropped.
+
+    match final_snapshot {
+        Some(result) => {
+            (
+                StatusCode::OK,
+                Json(BestMoveResponse {
+                    best_move: result.best_move.to_string(),
+                    line: result.pv
+                        .iter()
+                        .map(|m| m.to_string())
+                        .collect(),
+                    eval: result.eval,
+                    nodes: result.nodes,
+                    time: start_instant.elapsed().as_millis(),
+                    depth: result.depth,
+                }),
+            ).into_response()
+        }
+        None => {
+            // This happens if the search didn't even finish Depth 1 in 5 seconds (unlikely)
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(create_empty_response())).into_response()
         }
     }
+}
 
-    let transposition_table = TranspositionTable::new(TT_TABLE_SIZE);
-
-    let mut engine = EngineState {
-        game_id: "eval_temp".to_string(),
-        current_board,
-        history,
-        statistics: Default::default(),
-        global_map: Arc::clone(&state.global_map),
-        transposition_table,
-    };
-
-    let start_time = Instant::now();
-    let board = engine.current_board.clone();
-    let (line, nodes, _, eval, depth) = search(
-        payload.time_left_ms,
-        payload.time_limit_ms,
-        &board,
-        &mut engine
-    );
-    let time_taken_ms = start_time.elapsed().as_millis();
-
-    let best_move_str = line.first().map_or(String::new(), |m| m.to_string());
-
-    (
-        StatusCode::OK,
-        Json(BestMoveResponse {
-            best_move: best_move_str,
-            line: line
-                .iter()
-                .map(|m| m.to_string())
-                .collect(),
-            eval,
-            nodes,
-            time: time_taken_ms,
-            depth,
-        }),
-    )
+fn create_empty_response() -> BestMoveResponse {
+    BestMoveResponse {
+        best_move: String::new(),
+        line: vec![],
+        eval: 0,
+        nodes: 0,
+        time: 0,
+        depth: 0,
+    }
 }

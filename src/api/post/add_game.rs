@@ -1,6 +1,7 @@
 use axum::{ extract::State, response::IntoResponse, Json, http::StatusCode };
+use lru::LruCache;
 use serde::{ Deserialize, Serialize };
-use std::{ collections::HashMap, str::FromStr, sync::Arc };
+use std::{ str::FromStr, sync::{Arc, Mutex} };
 use crate::bot::include::types::{
     EngineState,
     RepetitionHistory,
@@ -22,11 +23,11 @@ pub struct NewGameResponse {
     message: String,
 }
 
-/// POST /new — Creates a new EngineState for a game
 pub async fn new_game_handler(
     State(state): State<ServerState>,
     Json(payload): Json<NewGameRequest>
 ) -> impl IntoResponse {
+    // 1. Check for existing game to prevent duplicates
     if state.engines.contains_key(&payload.game_id) {
         return (
             StatusCode::CONFLICT,
@@ -36,43 +37,55 @@ pub async fn new_game_handler(
         );
     }
 
-    let current_board = match Board::from_str(&payload.current_fen) {
+    // 2. Parse the FEN string into a Board
+    let board = match Board::from_str(&payload.current_fen) {
         Ok(b) => b,
         Err(_) => {
             return (
                 StatusCode::BAD_REQUEST,
                 Json(NewGameResponse {
-                    message: "Invalid FEN for current_board".to_string(),
+                    message: "Invalid FEN".to_string(),
                 }),
             );
         }
     };
 
-    // ✅ Use the new RepetitionHistory wrapper
+    // 3. Build repetition history from the move list/FEN history
     let mut history = RepetitionHistory::new();
     for fen in &payload.history {
-        if let Ok(board) = Board::from_str(fen) {
-            let hash = board.get_hash();
-            history.increment(hash);
+        if let Ok(b) = Board::from_str(fen) {
+            history.increment(b.get_hash());
         }
     }
 
-    let transposition_table = TranspositionTable::new(TT_TABLE_SIZE);
-    let engine = EngineState {
-        game_id: payload.game_id.clone(),
-        current_board,
-        history,
-        statistics: HashMap::new(),
-        global_map: Arc::clone(&state.global_map),
-        transposition_table,
+    // 4. Initialize the Transposition Table (TT)
+    // Note: TT_TABLE_SIZE should be passed to the LruCache constructor
+    let tt = TranspositionTable {
+        inner: Arc::new(Mutex::new(LruCache::new(
+            std::num::NonZeroUsize::new(TT_TABLE_SIZE).unwrap()
+        ))),
     };
 
+    // 5. Launch the background search thread
+    // We pass clones of Board and TT because the search thread needs its own ownership
+    let search_handle = start_background_search(board, tt.clone());
+
+    // 6. Construct the EngineState using our established Blueprint
+    let engine = EngineState {
+        game_id: payload.game_id.clone(),
+        current_board: board, // Aligned with blueprint
+        history,              // Aligned with blueprint
+        transposition_table: tt,
+        search: Some(search_handle),
+    };
+
+    // 7. Store the game in the global state
     state.engines.insert(payload.game_id.clone(), engine);
 
     (
         StatusCode::CREATED,
         Json(NewGameResponse {
-            message: format!("Game '{}' created", payload.game_id),
+            message: format!("Game '{}' initialized. Search thread started.", payload.game_id),
         }),
     )
 }
