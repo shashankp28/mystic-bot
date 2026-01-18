@@ -50,8 +50,6 @@ pub async fn best_move_handler(
     let wait_ms = payload.time_limit_ms.unwrap_or(2000);
     let start_wait = Instant::now();
 
-    debug!(limit_ms = wait_ms, "Entering polling loop for search completion");
-
     while start_wait.elapsed().as_millis() < (wait_ms as u128) {
         let is_done = engine.search
             .as_ref()
@@ -59,7 +57,6 @@ pub async fn best_move_handler(
             .unwrap_or(true);
 
         if is_done {
-            debug!(elapsed_ms = start_wait.elapsed().as_millis(), "Search signaled completion");
             break;
         }
 
@@ -67,19 +64,29 @@ pub async fn best_move_handler(
     }
 
     if let Some(mut handle) = engine.search.take() {
-        handle.stop();
         let result = handle.best.lock().unwrap().clone();
-
+        
         if let Some(res) = result {
+            if payload.update_state.unwrap_or(false) {
+                handle.stop();
+                let mut next_board = engine.current_board.clone();
+                engine.current_board.make_move(res.best_move, &mut next_board);
+                engine.current_board = next_board;
+                let board_hash = engine.current_board.get_hash();
+                engine.history.increment(board_hash);
+
+                engine.search = Some(
+                    SearchHandle::start(
+                        engine.current_board.clone(),
+                        engine.transposition_table.clone(),
+                        engine.history.clone()
+                    )
+                );
+                info!("State updated and new search initiated");
+            }
+
             let elapsed = start_wait.elapsed().as_millis();
-            info!(
-                best_move = %res.best_move,
-                eval = res.eval,
-                nodes = res.nodes,
-                depth = res.depth,
-                elapsed_ms = elapsed,
-                "Best move found"
-            );
+            debug!(nodes = res.nodes, depth = res.depth, "Returning search results");
 
             return (
                 StatusCode::OK,

@@ -3,6 +3,7 @@ Some example classes for people who want to create a homemade bot.
 
 With these classes, bot makers will not have to implement the UCI or XBoard interfaces themselves.
 """
+import uuid
 import chess
 from chess.engine import PlayResult, Limit
 import random
@@ -13,7 +14,6 @@ from typing import Optional, Type
 from types import TracebackType
 import requests
 import json
-
 
 # Use this logger variable to print messages to the console or log files.
 # logger.info("message") will always print "message" to the console or log file.
@@ -105,57 +105,72 @@ class ComboEngine(ExampleEngine):
 class MysticBot(ExampleEngine):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self.chessBoard = chess.Board()
-        self.timeout = 60  # Not used
-        self.timeRemaining = 0
-        self.fenVals = []
         self.server_url = "http://localhost:2832"
+        self.game_id = f"mystic_{uuid.uuid4().hex[:8]}"
+        self.initialized = False
 
-    def set_chess_board(self, board: chess.Board):
-        self.chessBoard = board
-
-    def get_best_move(self):
-
-        payload = {
-            "current_fen": self.chessBoard.fen(),
-            "history": self.fenVals,
-            "time_left_ms": int(self.timeRemaining * 1000),
-        }
-
-        print("Payload:")
-        print("  Current FEN    :", payload["current_fen"])
-        print("  History Length :", len(payload["history"]))
-        print("  Time left (ms) :", payload["time_left_ms"])
-        print("")
-
-        res = requests.get(f"{self.server_url}/eval", json=payload)
-        data = res.json()
-
-        print("Response:")
-        print(f"  Best Move : {data['best_move']}")
-        print(f"  Eval      : {data['eval']}")
-        print(f"  Nodes     : {data['nodes']}")
-        print(f"  Time (ms) : {data['time']}")
-        print(f"  Depth     : {data['depth']}")
-
-        if res.status_code != 200 or data["best_move"] is None:
-            raise Exception(f"Failed to get best move: {data}")
-
-        return data["best_move"], data
+    def _sync_to_rust(self, board: chess.Board):
+        if not self.initialized:
+            payload = {
+                "game_id": self.game_id,
+                "current_fen": board.fen(),
+                "history": [m.uci() for m in board.move_stack]
+            }
+            try:
+                res = requests.post(
+                    f"{self.server_url}/game", json=payload, timeout=5)
+                if res.status_code in [200, 201]:
+                    self.initialized = True
+            except Exception as e:
+                logger.error(f"Initalization error: {e}")
+        else:
+            if board.move_stack:
+                last_move = board.peek().uci()
+                try:
+                    requests.post(f"{self.server_url}/game/move",
+                                  json={"game_id": self.game_id,
+                                        "mov": last_move},
+                                  timeout=2)
+                except Exception as e:
+                    logger.error(f"Move sync error: {e}")
 
     def search(self, board: chess.Board, time_limit: Limit, ponder: bool, draw_offered: bool, root_moves: MOVE) -> PlayResult:
-        self.set_chess_board(board)
-        self.fenVals.append(board.fen())
+        self._sync_to_rust(board)
+        timeRemaining = time_limit.white_clock if board.turn == chess.WHITE else time_limit.black_clock
+        if timeRemaining is None:
+            timeRemaining = 60
+        payload = {
+            "game_id": self.game_id,
+            "time_left_ms": int(timeRemaining * 1000),
+            "update_state": True
+        }
 
-        self.timeRemaining = time_limit.white_clock if board.turn == chess.WHITE else time_limit.black_clock
-        if self.timeRemaining is None:
-            self.timeRemaining = 60  # 60 seconds
+        try:
+            res = requests.post(
+                f"{self.server_url}/game/best", json=payload, timeout=time_limit.time)
+            data = res.json()
+            move_uci = data.get("best_move")
+            info = {
+                "score": chess.engine.PovScore(chess.engine.Cp(data.get("eval", 0)), board.turn),
+                "nodes": data.get("nodes", 0),
+                "depth": data.get("depth", 0)
+            }
 
-        move_uci, debug_info = self.get_best_move()
-        move_obj = chess.Move.from_uci(move_uci)
-        board.push(move_obj)
-        self.fenVals.append(board.fen())
+            logger.info(
+                f"[{self.game_id}] Move: {move_uci} | Eval: {info['score']} | Depth: {info['depth']}")
+            return PlayResult(chess.Move.from_uci(move_uci), None, info=info, draw_offered=draw_offered)
 
-        logger.info(f"Move chosen: {move_uci}\n{debug_info}")
-        return PlayResult(move_obj, None, draw_offered=draw_offered)
+        except Exception as e:
+            logger.error(f"Search failed: {e}")
+            return PlayResult(random.choice(list(board.legal_moves)), None)
+
+    def __exit__(self, exc_type: Optional[Type[BaseException]],
+                    exc_value: Optional[BaseException],
+                    traceback: Optional[TracebackType]) -> None:
+        """Exit context and allow engine to shutdown nicely if there was no exception."""
+        if exc_type is None:
+            self.ping()
+            self.quit()
+        self.engine.__exit__(exc_type, exc_value, traceback)
+        requests.delete(f"{self.server_url}/game",
+                        params={"game_id": self.game_id}, timeout=1)

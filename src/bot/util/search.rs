@@ -74,12 +74,11 @@ impl SearchHandle {
         let beta = INF;
 
         for depth in 1..=MAX_PLY {
+            let (score, pv) = negamax(context, depth as i32, 0, alpha, beta);
             if context.stop_signal.load(Ordering::Relaxed) {
                 debug!(depth, "Search stop signal received");
                 break;
             }
-
-            let (score, pv) = negamax(context, depth as i32, 0, alpha, beta);
 
             if let Some(&mv) = pv.first() {
                 info!(
