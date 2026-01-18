@@ -1,10 +1,13 @@
-use std::sync::{ Arc, Mutex, atomic::{ AtomicBool, Ordering } };
+use std::{ sync::{ Arc, Mutex, atomic::{ AtomicBool, Ordering } }, time::Instant };
 use std::thread;
-
-use chess::{ Board, ChessMove };
+use tracing::{ info, debug };
+use chess::Board;
 
 use crate::bot::{
+    algorithm::negamax::negamax,
     include::types::{
+        INF,
+        MAX_PLY,
         RepetitionHistory,
         SearchContext,
         SearchHandle,
@@ -51,41 +54,55 @@ impl SearchHandle {
         }
     }
 
-    fn search_root(context: &mut SearchContext, best_out: Arc<Mutex<Option<SearchResult>>>) {
+    pub fn search_root(context: &mut SearchContext, best_out: Arc<Mutex<Option<SearchResult>>>) {
+        let start_time = Instant::now();
+
         if let Some(book_move) = lookup_opening_db(&context.board) {
-            let result = SearchResult {
+            info!(move = %book_move, "Opening book hit");
+            *best_out.lock().unwrap() = Some(SearchResult {
                 best_move: book_move,
                 pv: vec![book_move],
                 eval: 0,
                 depth: 0,
                 nodes: 0,
-            };
-
-            *best_out.lock().unwrap() = Some(result);
-
-            // Signal search completion
+            });
             context.stop_signal.store(true, Ordering::Release);
             return;
         }
 
-        for depth in 1..=64 {
+        let mut alpha = -INF;
+        let beta = INF;
+
+        for depth in 1..=MAX_PLY {
             if context.stop_signal.load(Ordering::Relaxed) {
+                debug!(depth, "Search stop signal received");
                 break;
             }
 
-            // TODO: call negamax / alpha-beta here
-            let dummy_move = ChessMove::new(chess::Square::A2, chess::Square::A4, None);
+            let (score, pv) = negamax(context, depth as i32, 0, alpha, beta);
 
-            let result = SearchResult {
-                best_move: dummy_move,
-                pv: vec![dummy_move],
-                eval: 0,
-                depth: depth as u8,
-                nodes: context.nodes_visited,
-            };
+            if let Some(&mv) = pv.first() {
+                info!(
+                depth,
+                score,
+                best_move = %mv,
+                nodes = context.nodes_visited,
+                time_ms = start_time.elapsed().as_millis(),
+                "Depth completed"
+            );
 
-            *best_out.lock().unwrap() = Some(result);
+                *best_out.lock().unwrap() = Some(SearchResult {
+                    best_move: mv,
+                    pv: pv.clone(),
+                    eval: score,
+                    depth: depth as u8,
+                    nodes: context.nodes_visited,
+                });
+            }
+
+            alpha = alpha.max(score);
         }
+
         context.stop_signal.store(true, Ordering::Release);
     }
 }

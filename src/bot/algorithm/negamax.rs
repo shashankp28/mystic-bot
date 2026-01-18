@@ -1,54 +1,12 @@
-use std::sync::{ Arc, Mutex, atomic::Ordering };
+use std::{ sync::{ atomic::Ordering } };
 use chess::{ ChessMove, MoveGen };
+use tracing::{ info, debug };
 use crate::bot::algorithm::quiescence::quiescence;
 use crate::bot::include::types::*;
 use crate::bot::util::board::BoardExt;
-use crate::bot::util::lookup::{ lookup_opening_db, store_killer };
+use crate::bot::util::lookup::{ store_killer };
 
-const INF: i32 = 1_000_000_000;
-const MAX_PLY: usize = 64;
-
-pub fn search_root(context: &mut SearchContext, best_out: Arc<Mutex<Option<SearchResult>>>) {
-    // ===== OPENING BOOK =====
-    if let Some(book_move) = lookup_opening_db(&context.board) {
-        *best_out.lock().unwrap() = Some(SearchResult {
-            best_move: book_move,
-            pv: vec![book_move],
-            eval: 0,
-            depth: 0,
-            nodes: 0,
-        });
-        context.stop_signal.store(true, Ordering::Release);
-        return;
-    }
-
-    let mut alpha = -INF;
-    let beta = INF;
-
-    for depth in 1..=MAX_PLY {
-        if context.stop_signal.load(Ordering::Relaxed) {
-            break;
-        }
-
-        let (score, pv) = negamax(context, depth as i32, 0, alpha, beta);
-
-        if let Some(&mv) = pv.first() {
-            *best_out.lock().unwrap() = Some(SearchResult {
-                best_move: mv,
-                pv: pv.clone(),
-                eval: score,
-                depth: depth as u8,
-                nodes: context.nodes_visited,
-            });
-        }
-
-        alpha = alpha.max(score);
-    }
-
-    context.stop_signal.store(true, Ordering::Release);
-}
-
-fn negamax(
+pub fn negamax(
     context: &mut SearchContext,
     depth: i32,
     ply: usize,
@@ -61,8 +19,8 @@ fn negamax(
         return (0, vec![]);
     }
 
-    if depth == 0 {
-        return (quiescence(context, alpha, beta), vec![]);
+    if depth <= 0 {
+        return (quiescence(context, alpha, beta, 0), vec![]);
     }
 
     let hash = context.board.get_hash();
@@ -79,10 +37,11 @@ fn negamax(
 
     if moves.is_empty() {
         return if context.board.checkers().popcnt() > 0 {
-            // Checkmate
-            (-MATE_SCORE_BASE + (ply as i32), vec![])
+            let mate_score = -MATE_SCORE_BASE + (ply as i32);
+            info!(ply, score = mate_score, "Checkmate detected");
+            (mate_score, vec![])
         } else {
-            // Stalemate
+            debug!(ply, "Stalemate detected");
             (0, vec![])
         };
     }

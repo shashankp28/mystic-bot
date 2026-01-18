@@ -14,89 +14,56 @@ use mystic_bot::{
             make_move::make_move_handler,
         },
     },
-    bot::include::types::{ GlobalMap, ServerState },
+    bot::include::types::{ GlobalMap, LOGO, ServerState },
 };
 use std::{ net::SocketAddr, sync::Arc, time::Duration };
 use tower_http::trace::{ TraceLayer, DefaultMakeSpan, DefaultOnRequest };
 use tracing::Span;
-use tracing_subscriber::{ fmt, layer::SubscriberExt, util::SubscriberInitExt };
+use tracing_subscriber::{ fmt, prelude::* };
 use clap::Parser;
 
-/// CLI config using clap
 #[derive(Parser, Debug)]
 #[command(name = "MysticBot")]
-#[command(about = "MysticBot Chess Engine API Server", long_about = None)]
 struct Cli {
-    /// Port number to bind the server
     #[arg(short, long, default_value_t = 8080)]
     port: u16,
 }
 
 #[tokio::main]
 async fn main() {
-    let logo =
-        r#"
- .--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--. 
-/ .. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \
-\ \/\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ \/ /
- \/ /`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'\/ / 
- / /\                                                                                                                                                                                                                                    / /\ 
-/ /\ \            _____                _____                    _____                _____                    _____                    _____                            _____                   _______               _____             / /\ \
-\ \/ /           /\    \              |\    \                  /\    \              /\    \                  /\    \                  /\    \                          /\    \                 /::\    \             /\    \            \ \/ /
- \/ /           /::\____\             |:\____\                /::\    \            /::\    \                /::\    \                /::\    \                        /::\    \               /::::\    \           /::\    \            \/ / 
- / /\          /::::|   |             |::|   |               /::::\    \           \:::\    \               \:::\    \              /::::\    \                      /::::\    \             /::::::\    \          \:::\    \           / /\ 
-/ /\ \        /:::::|   |             |::|   |              /::::::\    \           \:::\    \               \:::\    \            /::::::\    \                    /::::::\    \           /::::::::\    \          \:::\    \         / /\ \
-\ \/ /       /::::::|   |             |::|   |             /:::/\:::\    \           \:::\    \               \:::\    \          /:::/\:::\    \                  /:::/\:::\    \         /:::/~~\:::\    \          \:::\    \        \ \/ /
- \/ /       /:::/|::|   |             |::|   |            /:::/__\:::\    \           \:::\    \               \:::\    \        /:::/  \:::\    \                /:::/__\:::\    \       /:::/    \:::\    \          \:::\    \        \/ / 
- / /\      /:::/ |::|   |             |::|   |            \:::\   \:::\    \          /::::\    \              /::::\    \      /:::/    \:::\    \              /::::\   \:::\    \     /:::/    / \:::\    \         /::::\    \       / /\ 
-/ /\ \    /:::/  |::|___|______       |::|___|______    ___\:::\   \:::\    \        /::::::\    \    ____    /::::::\    \    /:::/    / \:::\    \            /::::::\   \:::\    \   /:::/____/   \:::\____\       /::::::\    \     / /\ \
-\ \/ /   /:::/   |::::::::\    \      /::::::::\    \  /\   \:::\   \:::\    \      /:::/\:::\    \  /\   \  /:::/\:::\    \  /:::/    /   \:::\    \          /:::/\:::\   \:::\ ___\ |:::|    |     |:::|    |     /:::/\:::\    \    \ \/ /
- \/ /   /:::/    |:::::::::\____\    /::::::::::\____\/::\   \:::\   \:::\____\    /:::/  \:::\____\/::\   \/:::/  \:::\____\/:::/____/     \:::\____\        /:::/__\:::\   \:::|    ||:::|____|     |:::|    |    /:::/  \:::\____\    \/ / 
- / /\   \::/    / ~~~~~/:::/    /   /:::/~~~~/~~      \:::\   \:::\   \::/    /   /:::/    \::/    /\:::\  /:::/    \::/    /\:::\    \      \::/    /        \:::\   \:::\  /:::|____| \:::\    \   /:::/    /    /:::/    \::/    /    / /\ 
-/ /\ \   \/____/      /:::/    /   /:::/    /          \:::\   \:::\   \/____/   /:::/    / \/____/  \:::\/:::/    / \/____/  \:::\    \      \/____/          \:::\   \:::\/:::/    /   \:::\    \ /:::/    /    /:::/    / \/____/    / /\ \
-\ \/ /               /:::/    /   /:::/    /            \:::\   \:::\    \      /:::/    /            \::::::/    /            \:::\    \                       \:::\   \::::::/    /     \:::\    /:::/    /    /:::/    /             \ \/ /
- \/ /               /:::/    /   /:::/    /              \:::\   \:::\____\    /:::/    /              \::::/____/              \:::\    \                       \:::\   \::::/    /       \:::\__/:::/    /    /:::/    /               \/ / 
- / /\              /:::/    /    \::/    /                \:::\  /:::/    /    \::/    /                \:::\    \               \:::\    \                       \:::\  /:::/    /         \::::::::/    /     \::/    /                / /\ 
-/ /\ \            /:::/    /      \/____/                  \:::\/:::/    /      \/____/                  \:::\    \               \:::\    \                       \:::\/:::/    /           \::::::/    /       \/____/                / /\ \
-\ \/ /           /:::/    /                                 \::::::/    /                                 \:::\    \               \:::\    \                       \::::::/    /             \::::/    /                               \ \/ /
- \/ /           /:::/    /                                   \::::/    /                                   \:::\____\               \:::\____\                       \::::/    /               \::/____/                                 \/ / 
- / /\           \::/    /                                     \::/    /                                     \::/    /                \::/    /                        \::/____/                 ~~                                       / /\ 
-/ /\ \           \/____/                                       \/____/                                       \/____/                  \/____/                          ~~                                                               / /\ \
-\ \/ /                                                                                                                                                                                                                                  \ \/ /
- \/ /   ASCII Art: www.asciiart.eu                                                                                                                                                                                                       \/ / 
- / /\.--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--./ /\ 
-/ /\ \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \/\ \
-\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `' /
- `--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'                                                                       
-                                                                                                            MYSTIC BOT                                
-                                                                                                Ready to make your move? Let's play!
-"#;
+    tracing_subscriber
+        ::registry()
+        .with(
+            tracing_subscriber::EnvFilter
+                ::try_from_default_env()
+                .unwrap_or_else(|_| "mystic_bot=trace,axum=info,tower_http=info".into())
+        )
+        .with(
+            fmt
+                ::layer()
+                .with_thread_ids(true)
+                .with_target(true)
+                .with_level(true)
+                .with_timer(fmt::time::UtcTime::rfc_3339())
+        )
+        .init();
 
-    println!("{}", logo);
+    println!("{}", LOGO);
 
-    // Parse CLI args
     let cli = Cli::parse();
 
-    // Set up tracing subscriber for logging
-    tracing_subscriber::registry().with(fmt::layer()).init();
-
-    // Create shared state
-    let global_map = Arc::new(GlobalMap {
-        // init fields here if needed
-    });
+    let global_map = Arc::new(GlobalMap {});
 
     let state = ServerState {
         engines: Arc::new(DashMap::new()),
         global_map,
     };
 
-    // Create trace layer with logging
     let trace_layer = TraceLayer::new_for_http()
         .make_span_with(DefaultMakeSpan::new().include_headers(true))
         .on_request(DefaultOnRequest::new().level(tracing::Level::INFO))
         .on_response(log_response);
 
-    // Build the app with routes and middleware
     let app = Router::new()
         .route("/", get(root_handler))
         .route("/game", post(new_game_handler))
@@ -108,19 +75,22 @@ async fn main() {
         .layer(trace_layer)
         .with_state(state);
 
-    // Load OpeningDB
     GlobalMap::opening_db();
 
-    // Define the address
     let addr = SocketAddr::from(([127, 0, 0, 1], cli.port));
-    println!("🚀 Axum server running at http://{addr}");
+    tracing::info!(%addr, "MysticBot server initializing");
 
-    // Start the server
-    axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }
 
-// Function used to log response metadata
 fn log_response<B>(response: &Response<B>, latency: Duration, span: &Span) where B: std::fmt::Debug {
     let status = response.status();
-    tracing::info!(parent: span, ?status, ?latency, "response sent");
+    tracing::info!(
+        parent: span, 
+        ?status, 
+        ?latency, 
+        module = "mystic_bot::api",
+        "HTTP response dispatched"
+    );
 }

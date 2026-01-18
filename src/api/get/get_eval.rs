@@ -2,6 +2,7 @@ use axum::{ extract::Json, response::IntoResponse, http::StatusCode };
 use serde::{ Deserialize, Serialize };
 use std::{ str::FromStr, sync::Arc, time::Instant };
 use chess::Board;
+use tracing::{ info, warn, debug, error, instrument };
 use crate::bot::{
     include::types::{ SearchHandle, TT_TABLE_SIZE, TranspositionTable, RepetitionHistory },
     util::search::estimate_search_time,
@@ -18,43 +19,45 @@ pub struct EvalRequest {
 #[derive(Debug, Serialize)]
 pub struct BestMoveResponse {
     pub best_move: String,
-    pub line: Vec<String>, // Full principal variation in UCI format
-    pub eval: i32, // Evaluation score
-    pub nodes: u64, // Total nodes searched
-    pub time: u128, // Time taken in milliseconds
-    pub depth: u8, // Maximum search depth reached
+    pub line: Vec<String>,
+    pub eval: i32,
+    pub nodes: u64,
+    pub time: u128,
+    pub depth: u8,
 }
 
+#[instrument(skip(payload))]
 pub async fn eval_position_handler(Json(payload): Json<EvalRequest>) -> impl IntoResponse {
-    // Parse board
     let board = match Board::from_str(&payload.current_fen) {
         Ok(b) => b,
-        Err(_) => {
+        Err(e) => {
+            warn!(fen = %payload.current_fen, error = ?e, "Invalid FEN received");
             return (StatusCode::BAD_REQUEST, Json(create_empty_response())).into_response();
         }
     };
 
-    // Rebuild repetition history
     let mut history = RepetitionHistory::new();
-    for fen in &payload.history {
+    for (i, fen) in payload.history.iter().enumerate() {
         if let Ok(b) = Board::from_str(fen) {
             history.increment(b.get_hash());
+        } else {
+            debug!(index = i, fen = %fen, "Skipping invalid history FEN");
         }
     }
 
     let tt = TranspositionTable::new(TT_TABLE_SIZE);
     let mut search_handle = SearchHandle::start(board, tt, history);
 
-    // Estimate time and prepare timer
     let estimated_ms = estimate_search_time(payload.time_left_ms, payload.time_limit_ms);
     let time_limit = std::time::Duration::from_millis(estimated_ms as u64);
-    let stop_signal: Arc<std::sync::atomic::AtomicBool> = Arc::clone(&search_handle.stop);
+    let stop_signal = Arc::clone(&search_handle.stop);
     let start_instant = Instant::now();
 
-    // Wait until either search finishes or timer expires
+    info!(limit_ms = estimated_ms, "Search initiated");
+
     tokio::select! {
         _ = tokio::time::sleep(time_limit) => {
-            // Timer expired
+            debug!("Search time limit reached");
         }
         _ = async {
             loop {
@@ -64,18 +67,25 @@ pub async fn eval_position_handler(Json(payload): Json<EvalRequest>) -> impl Int
                 tokio::time::sleep(std::time::Duration::from_millis(10)).await;
             }
         } => {
-            // Search finished early (e.g., found mate)
+            debug!("Search completed before time limit");
         }
     }
 
-    // Stop the search thread
     search_handle.stop();
-
-    // Grab the final search result
     let final_snapshot = search_handle.best.lock().unwrap().clone();
 
     match final_snapshot {
-        Some(result) =>
+        Some(result) => {
+            let elapsed = start_instant.elapsed().as_millis();
+            info!(
+                best_move = %result.best_move,
+                eval = result.eval,
+                depth = result.depth,
+                nodes = result.nodes,
+                elapsed_ms = elapsed,
+                "Search result found"
+            );
+
             (
                 StatusCode::OK,
                 Json(BestMoveResponse {
@@ -86,11 +96,15 @@ pub async fn eval_position_handler(Json(payload): Json<EvalRequest>) -> impl Int
                         .collect(),
                     eval: result.eval,
                     nodes: result.nodes,
-                    time: start_instant.elapsed().as_millis(),
+                    time: elapsed,
                     depth: result.depth,
                 }),
-            ).into_response(),
-        None => (StatusCode::INTERNAL_SERVER_ERROR, Json(create_empty_response())).into_response(),
+            ).into_response()
+        }
+        None => {
+            error!("Search handle returned no result");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(create_empty_response())).into_response()
+        }
     }
 }
 

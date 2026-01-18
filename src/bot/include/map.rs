@@ -3,6 +3,7 @@ use std::{ fs, io::{ self, Write }, path::Path, sync::Arc };
 use flate2::read::GzDecoder;
 use once_cell::sync::Lazy;
 use tar::Archive;
+use tracing::{ info, error, warn };
 
 use crate::bot::include::types::{ GlobalMap, OpeningBook };
 
@@ -14,33 +15,43 @@ pub fn read_opening_db() -> Result<OpeningBook, io::Error> {
     let file_path = output_dir.join("openingDB.json");
 
     if !file_path.exists() {
-        println!("OpeningDB not found, extracting...");
+        info!(path = ?file_path, "Opening database not found, starting extraction");
 
         fs::create_dir_all(output_dir)?;
 
-        {
-            let mut file = fs::File::create(&compressed_path)?;
-            file.write_all(COMPRESSED_OPENING_DB)?;
-        }
+        let mut file = fs::File::create(&compressed_path)?;
+        file.write_all(COMPRESSED_OPENING_DB)?;
 
         let tar_file = fs::File::open(&compressed_path)?;
         let tar = GzDecoder::new(tar_file);
         let mut archive = Archive::new(tar);
-        archive.unpack(output_dir)?;
+
+        if let Err(e) = archive.unpack(output_dir) {
+            error!(error = %e, "Failed to unpack opening database");
+            return Err(e);
+        }
 
         fs::remove_file(&compressed_path)?;
-        println!("OpeningDB extracted to {:?}", file_path);
+        info!("Opening database successfully extracted");
     }
 
     let file_content = fs::read_to_string(&file_path)?;
-    let db: OpeningBook = serde_json
-        ::from_str(&file_content)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    let db: OpeningBook = serde_json::from_str(&file_content).map_err(|e| {
+        error!(error = %e, "Failed to deserialize opening JSON");
+        io::Error::new(io::ErrorKind::InvalidData, e)
+    })?;
 
     Ok(db)
 }
+
 pub static OPENING_DB: Lazy<Arc<OpeningBook>> = Lazy::new(|| {
-    Arc::new(read_opening_db().expect("Failed to load opening DB"))
+    match read_opening_db() {
+        Ok(db) => Arc::new(db),
+        Err(e) => {
+            warn!(error = %e, "Critical failure loading opening book, using empty fallback");
+            Arc::new(OpeningBook::default())
+        }
+    }
 });
 
 impl GlobalMap {

@@ -1,7 +1,8 @@
 use std::{ sync::atomic::Ordering, time::{ Duration, Instant } };
 use axum::{ extract::{ State, Json }, http::StatusCode, response::IntoResponse };
 use serde::{ Deserialize, Serialize };
-use crate::{ bot::include::types::{ SearchHandle, ServerState } };
+use tracing::{ info, warn, debug, error, instrument };
+use crate::bot::include::types::{ SearchHandle, ServerState };
 
 #[derive(Debug, Deserialize)]
 pub struct BestMoveQuery {
@@ -21,6 +22,8 @@ pub struct BestMoveResponse {
     pub depth: u8,
     pub new_position: String,
 }
+
+#[instrument(skip(state, payload), fields(game_id = %payload.game_id))]
 pub async fn best_move_handler(
     State(state): State<ServerState>,
     Json(payload): Json<BestMoveQuery>
@@ -28,46 +31,56 @@ pub async fn best_move_handler(
     let mut engine = match state.engines.get_mut(&payload.game_id) {
         Some(e) => e,
         None => {
+            warn!(game_id = %payload.game_id, "Best move requested for non-existent game");
             return (StatusCode::NOT_FOUND, Json(create_empty_response())).into_response();
         }
     };
 
-    // 1. If we aren't already searching, start a search
     if engine.search.is_none() {
+        debug!("Initializing new search handle");
         engine.search = Some(
             SearchHandle::start(
                 engine.current_board.clone(),
                 engine.transposition_table.clone(),
-                engine.history.clone() // FIXED: Added missing 3rd argument
+                engine.history.clone()
             )
         );
     }
 
-    // 2. Wait for the search or time out
     let wait_ms = payload.time_limit_ms.unwrap_or(2000);
     let start_wait = Instant::now();
 
-    // Simple polling loop for the stop signal
+    debug!(limit_ms = wait_ms, "Entering polling loop for search completion");
+
     while start_wait.elapsed().as_millis() < (wait_ms as u128) {
         let is_done = engine.search
             .as_ref()
-            .map(|s| s.stop.load(Ordering::SeqCst)) // FIXED: Ordering now in scope
+            .map(|s| s.stop.load(Ordering::SeqCst))
             .unwrap_or(true);
 
         if is_done {
+            debug!(elapsed_ms = start_wait.elapsed().as_millis(), "Search signaled completion");
             break;
         }
 
-        // FIXED: sleep and Duration now in scope
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
 
-    // 3. Stop search and get result
     if let Some(mut handle) = engine.search.take() {
         handle.stop();
         let result = handle.best.lock().unwrap().clone();
 
         if let Some(res) = result {
+            let elapsed = start_wait.elapsed().as_millis();
+            info!(
+                best_move = %res.best_move,
+                eval = res.eval,
+                nodes = res.nodes,
+                depth = res.depth,
+                elapsed_ms = elapsed,
+                "Best move found"
+            );
+
             return (
                 StatusCode::OK,
                 Json(BestMoveResponse {
@@ -78,7 +91,7 @@ pub async fn best_move_handler(
                         .collect(),
                     eval: res.eval,
                     nodes: res.nodes,
-                    time: start_wait.elapsed().as_millis(),
+                    time: elapsed,
                     depth: res.depth,
                     new_position: engine.current_board.to_string(),
                 }),
@@ -86,10 +99,10 @@ pub async fn best_move_handler(
         }
     }
 
+    error!("Search failed to produce a valid result within time limits");
     (StatusCode::INTERNAL_SERVER_ERROR, Json(create_empty_response())).into_response()
 }
 
-/// Helper for clean error responses
 fn create_empty_response() -> BestMoveResponse {
     BestMoveResponse {
         best_move: String::new(),

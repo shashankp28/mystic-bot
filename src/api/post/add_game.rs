@@ -2,6 +2,7 @@ use axum::{ extract::State, response::IntoResponse, Json, http::StatusCode };
 use serde::{ Deserialize, Serialize };
 use std::str::FromStr;
 use chess::Board;
+use tracing::{ info, warn, error, debug, instrument };
 use crate::bot::include::types::*;
 
 #[derive(Debug, Deserialize)]
@@ -16,11 +17,13 @@ pub struct NewGameResponse {
     pub message: String,
 }
 
+#[instrument(skip(state, payload), fields(game_id = %payload.game_id))]
 pub async fn new_game_handler(
     State(state): State<ServerState>,
     Json(payload): Json<NewGameRequest>
 ) -> impl IntoResponse {
     if state.engines.contains_key(&payload.game_id) {
+        warn!(game_id = %payload.game_id, "Attempted to create a game that already exists");
         return (
             StatusCode::CONFLICT,
             Json(NewGameResponse {
@@ -31,7 +34,8 @@ pub async fn new_game_handler(
 
     let board = match Board::from_str(&payload.current_fen) {
         Ok(b) => b,
-        Err(_) => {
+        Err(e) => {
+            error!(error = ?e, fen = %payload.current_fen, "Failed to parse initial FEN");
             return (
                 StatusCode::BAD_REQUEST,
                 Json(NewGameResponse { message: "Invalid FEN".to_string() }),
@@ -45,6 +49,7 @@ pub async fn new_game_handler(
             history.increment(b.get_hash());
         }
     }
+    debug!(history_count = payload.history.len(), "Repetition history initialized");
 
     let tt = TranspositionTable::new(TT_TABLE_SIZE);
 
@@ -59,6 +64,12 @@ pub async fn new_game_handler(
     };
 
     state.engines.insert(payload.game_id.clone(), engine);
+
+    info!(
+        game_id = %payload.game_id, 
+        fen = %payload.current_fen, 
+        "New engine state successfully initialized and cached"
+    );
 
     (
         StatusCode::CREATED,
