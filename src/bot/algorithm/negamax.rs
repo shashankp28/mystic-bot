@@ -1,152 +1,138 @@
-use chess::{ Board, ChessMove };
-use std::time::Instant;
-use crate::bot::algorithm::eval::is_terminal;
-use crate::bot::algorithm::quiet::quiescence_search;
-use crate::bot::algorithm::root::get_prioritized_moves;
-use crate::bot::include::types::{ EngineState, QUIET_FALL_SHARPNESS };
-use rayon::prelude::*;
+use std::sync::{ Arc, Mutex, atomic::Ordering };
+use chess::{ ChessMove, MoveGen };
+use crate::bot::algorithm::quiescence::quiescence;
+use crate::bot::include::types::*;
+use crate::bot::util::board::BoardExt;
+use crate::bot::util::lookup::{ lookup_opening_db, store_killer };
 
-pub fn negamax(
-    board: &Board,
-    mut alpha: i32,
-    beta: i32,
-    nodes: &mut u64,
-    deadline: Instant,
-    engine_state: &mut EngineState,
-    depth: u8,
-    current_depth: u8,
-    max_depth_reached: &mut u8,
-    color: i32
-) -> (Vec<ChessMove>, i32) {
-    if Instant::now() >= deadline {
-        return (vec![], 0);
+const INF: i32 = 1_000_000_000;
+const MAX_PLY: usize = 64;
+
+pub fn search_root(context: &mut SearchContext, best_out: Arc<Mutex<Option<SearchResult>>>) {
+    // ===== OPENING BOOK =====
+    if let Some(book_move) = lookup_opening_db(&context.board) {
+        *best_out.lock().unwrap() = Some(SearchResult {
+            best_move: book_move,
+            pv: vec![book_move],
+            eval: 0,
+            depth: 0,
+            nodes: 0,
+        });
+        context.stop_signal.store(true, Ordering::Release);
+        return;
     }
 
-    *nodes += 1;
-    *max_depth_reached = (*max_depth_reached).max(current_depth);
+    let mut alpha = -INF;
+    let beta = INF;
 
-    let board_hash = board.get_hash();
-    let repetition_count = engine_state.history.get(board_hash);
+    for depth in 1..=MAX_PLY {
+        if context.stop_signal.load(Ordering::Relaxed) {
+            break;
+        }
 
-    if let Some((_, score)) = is_terminal(board, current_depth, repetition_count) {
-        return (vec![], score * color);
+        let (score, pv) = negamax(context, depth as i32, 0, alpha, beta);
+
+        if let Some(&mv) = pv.first() {
+            *best_out.lock().unwrap() = Some(SearchResult {
+                best_move: mv,
+                pv: pv.clone(),
+                eval: score,
+                depth: depth as u8,
+                nodes: context.nodes_visited,
+            });
+        }
+
+        alpha = alpha.max(score);
+    }
+
+    context.stop_signal.store(true, Ordering::Release);
+}
+
+fn negamax(
+    context: &mut SearchContext,
+    depth: i32,
+    ply: usize,
+    mut alpha: i32,
+    beta: i32
+) -> (i32, Vec<ChessMove>) {
+    context.nodes_visited += 1;
+
+    if context.stop_signal.load(Ordering::Relaxed) {
+        return (0, vec![]);
     }
 
     if depth == 0 {
-        let (q_line, q_eval, noise_level) = quiescence_search(
-            board,
-            alpha,
-            beta,
-            nodes,
-            deadline,
-            engine_state,
-            current_depth + 1,
-            max_depth_reached,
-            color,
-            current_depth
-        );
-
-        let static_eval = crate::bot::algorithm::eval::evaluate_board(board) * color;
-        let noise_factor = ((noise_level as f32) / 2500.0).clamp(0.0, 1.0);
-        let n = QUIET_FALL_SHARPNESS;
-        let q_weight = 1.0 - (1.0 - (1.0 - noise_factor).powf(n)).powf(1.0 / n);
-        let adjusted_eval = ((static_eval as f32) * (1.0 - q_weight) +
-            (q_eval as f32) * q_weight) as i32;
-
-        return (q_line, adjusted_eval);
+        return (quiescence(context, alpha, beta), vec![]);
     }
 
-    let prioritized_moves = get_prioritized_moves(board, false);
-    let mut best_line = vec![];
-    let mut best_eval = i32::MIN;
+    let hash = context.board.get_hash();
 
-    if current_depth == 0 {
-        let beta_shared = beta;
-        let depth_shared = depth;
-        let deadline_shared = deadline;
-        let color_shared = color;
+    if let Some(tt) = context.tt.probe(hash, depth as u8, alpha, beta) {
+        return (tt.value as i32, vec![]);
+    }
 
-        let results: Vec<(Vec<ChessMove>, i32, u64, u8)> = prioritized_moves
-            .par_iter()
-            .map(|(mv, _)| {
-                let mut local_engine_state = engine_state.clone();
-                let new_board = board.make_move_new(*mv);
-                let new_hash = new_board.get_hash();
-                local_engine_state.history.increment(new_hash);
+    let mut best_score = -INF;
+    let mut best_move = None;
+    let mut best_pv = Vec::new();
 
-                let mut local_nodes = 0u64;
-                let mut local_max_depth = *max_depth_reached;
+    let moves = ordered_moves(context, ply);
 
-                let (child_line, eval) = negamax(
-                    &new_board,
-                    -beta_shared,
-                    -alpha,
-                    &mut local_nodes,
-                    deadline_shared,
-                    &mut local_engine_state,
-                    depth_shared - 1,
-                    current_depth + 1,
-                    &mut local_max_depth,
-                    -color_shared
-                );
+    if moves.is_empty() {
+        return if context.board.checkers().popcnt() > 0 {
+            // Checkmate
+            (-MATE_SCORE_BASE + (ply as i32), vec![])
+        } else {
+            // Stalemate
+            (0, vec![])
+        };
+    }
 
-                let score = -eval;
-                let mut line = vec![*mv];
-                line.extend(child_line);
+    for mv in moves {
+        let next = context.board.make_move_new(mv);
+        let old = std::mem::replace(&mut context.board, next);
 
-                (line, score, local_nodes, local_max_depth)
-            })
-            .collect();
+        let (score, pv) = negamax(context, depth - 1, ply + 1, -beta, -alpha);
+        let score = -score;
 
-        let mut total_nodes_from_threads = 0u64;
-        for (line, score, local_nodes, local_max_depth) in results {
-            total_nodes_from_threads += local_nodes;
-            *max_depth_reached = (*max_depth_reached).max(local_max_depth);
+        context.board = old;
 
-            if score > best_eval {
-                best_eval = score;
-                best_line = line;
-            }
-
-            alpha = alpha.max(score);
-            if alpha >= beta {
-                break;
-            }
+        if score > best_score {
+            best_score = score;
+            best_move = Some(mv);
+            best_pv = vec![mv];
+            best_pv.extend(pv);
         }
-        *nodes += total_nodes_from_threads;
-    } else {
-        for (mv, _) in prioritized_moves {
-            let new_board = board.make_move_new(mv);
-            let new_hash = new_board.get_hash();
-            engine_state.history.increment(new_hash);
 
-            let (child_line, eval) = negamax(
-                &new_board,
-                -beta,
-                -alpha,
-                nodes,
-                deadline,
-                engine_state,
-                depth - 1,
-                current_depth + 1,
-                max_depth_reached,
-                -color
-            );
-
-            engine_state.history.decrement(new_hash);
-            let score = -eval;
-
-            if score > best_eval {
-                best_eval = score;
-                best_line = vec![mv];
-                best_line.extend(child_line);
-            }
-
-            alpha = alpha.max(score);
-            if alpha >= beta {
-                break;
-            }
+        alpha = alpha.max(score);
+        if alpha >= beta {
+            store_killer(context, ply, mv);
+            break;
         }
     }
-    (best_line, best_eval)
+
+    context.tt.store(hash, best_score, depth as u8, alpha, beta, best_move);
+
+    (best_score, best_pv)
+}
+
+fn ordered_moves(context: &SearchContext, ply: usize) -> Vec<ChessMove> {
+    let mut moves: Vec<_> = MoveGen::new_legal(&context.board).collect();
+
+    moves.sort_by_key(|mv| {
+        let mut score = context.board.move_priority(*mv);
+
+        if Some(*mv) == context.killer_moves[ply][0] {
+            score += 9_000;
+        } else if Some(*mv) == context.killer_moves[ply][1] {
+            score += 8_000;
+        }
+
+        let src = mv.get_source().to_index();
+        let dst = mv.get_dest().to_index();
+        score += context.history_scores[src][dst];
+
+        -score
+    });
+
+    moves
 }

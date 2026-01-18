@@ -1,14 +1,13 @@
 use axum::{ extract::State, Json, http::StatusCode, response::IntoResponse };
-use crate::bot::include::types::{ ServerState };
+use crate::bot::include::types::{ ServerState, SearchHandle };
 use chess::{ ChessMove, MoveGen };
 use std::str::FromStr;
-
 use serde::{ Deserialize, Serialize };
 
 #[derive(Debug, Deserialize)]
 pub struct MoveRequest {
     pub game_id: String,
-    pub mov: String, // "move" is a reserved keyword
+    pub mov: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -27,7 +26,7 @@ pub async fn make_move_handler(
             return (
                 StatusCode::NOT_FOUND,
                 Json(MoveResponse {
-                    message: format!("Game ID '{}' not found", payload.game_id),
+                    message: "Game not found".to_string(),
                     new_fen: "".to_string(),
                 }),
             ).into_response();
@@ -35,55 +34,48 @@ pub async fn make_move_handler(
     };
 
     let Ok(chess_move) = ChessMove::from_str(&payload.mov) else {
-        let fen = engine.current_board.to_string();
         return (
             StatusCode::BAD_REQUEST,
             Json(MoveResponse {
                 message: "Invalid move format".to_string(),
-                new_fen: fen,
+                new_fen: engine.current_board.to_string(),
             }),
         ).into_response();
     };
 
-    let mut legal_moves = MoveGen::new_legal(&engine.current_board);
-    if !legal_moves.any(|m| m == chess_move) {
-        let fen = engine.current_board.to_string();
+    if !MoveGen::new_legal(&engine.current_board).any(|m| m == chess_move) {
         return (
             StatusCode::BAD_REQUEST,
             Json(MoveResponse {
                 message: "Illegal move".to_string(),
-                new_fen: fen,
+                new_fen: engine.current_board.to_string(),
             }),
         ).into_response();
     }
 
-    // Stop current search as the position is changing
     if let Some(mut old_search) = engine.search.take() {
         old_search.stop();
     }
 
-    // Apply the move and update history
     engine.current_board = engine.current_board.make_move_new(chess_move);
-    engine.history.increment(engine.current_board.get_hash());
+    let board_hash = engine.current_board.get_hash();
+    engine.history.increment(board_hash);
 
-    // Start a new search with the updated board and history
     engine.search = Some(
-        crate::bot::include::types::SearchHandle::start(
+        SearchHandle::start(
             engine.current_board,
             engine.transposition_table.clone(),
-            engine.history.clone() // Added required history parameter
+            engine.history.clone()
         )
     );
 
     let new_fen = engine.current_board.to_string();
-
-    // Explicitly release the lock on the engine entry
     drop(engine);
 
     (
         StatusCode::OK,
         Json(MoveResponse {
-            message: format!("Move {} played successfully. Bot is thinking...", payload.mov),
+            message: format!("Move {} applied.", payload.mov),
             new_fen,
         }),
     ).into_response()

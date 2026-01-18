@@ -11,3 +11,15 @@ pub fn piece_value(piece: Piece) -> i32 {
         Piece::King => KING_BASE,
     }
 }
+
+#[inline(always)]
+pub fn phase_value(piece: Piece) -> i32 {
+    match piece {
+        Piece::Pawn   => PAWN_PHASE,
+        Piece::Knight => KNIGHT_PHASE,
+        Piece::Bishop => BISHOP_PHASE,
+        Piece::Rook   => ROOK_PHASE,
+        Piece::Queen  => QUEEN_PHASE,
+        Piece::King   => KING_PHASE,
+    }
+}

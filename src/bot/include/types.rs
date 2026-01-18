@@ -6,6 +6,12 @@ use lru::LruCache;
 use chess::{ Board, ChessMove };
 use serde::Deserialize;
 
+#[derive(Clone)]
+pub struct ServerState {
+    pub engines: Arc<DashMap<String, EngineState>>,
+    pub global_map: Arc<GlobalMap>,
+}
+
 #[derive(Debug, Clone)]
 pub struct SearchResult {
     pub best_move: ChessMove,
@@ -21,10 +27,10 @@ pub struct SearchHandle {
     pub handle: Option<JoinHandle<()>>,
 }
 
-pub struct SearchContext<'a> {
+pub struct SearchContext {
     pub board: Board,
-    pub history: &'a mut RepetitionHistory,
-    pub tt: &'a TranspositionTable,
+    pub history: RepetitionHistory,
+    pub tt: TranspositionTable, // Removed Arc wrapper here
     pub stop_signal: Arc<AtomicBool>,
     pub killer_moves: [[Option<ChessMove>; 2]; 64],
     pub history_scores: [[i32; 64]; 64],
@@ -68,11 +74,6 @@ pub struct EngineState {
     pub search: Option<SearchHandle>,
 }
 
-#[derive(Clone)]
-pub struct ServerState {
-    pub engines: Arc<DashMap<String, EngineState>>,
-}
-
 #[derive(Debug, Clone, Deserialize)]
 pub struct OpeningEntry(pub String, pub u32);
 pub type OpeningBook = HashMap<u64, Vec<OpeningEntry>>;
@@ -80,12 +81,21 @@ pub type OpeningBook = HashMap<u64, Vec<OpeningEntry>>;
 #[derive(Debug)]
 pub struct GlobalMap {}
 
+// Piece Base value
 pub const PAWN_BASE: i32 = 100;
 pub const KNIGHT_BASE: i32 = 300;
 pub const BISHOP_BASE: i32 = 350;
 pub const ROOK_BASE: i32 = 500;
 pub const QUEEN_BASE: i32 = 900;
 pub const KING_BASE: i32 = 0;
+
+// Phase Base value
+pub const PAWN_PHASE: i32 = 100;
+pub const KNIGHT_PHASE: i32 = 300;
+pub const BISHOP_PHASE: i32 = 350;
+pub const ROOK_PHASE: i32 = 500;
+pub const QUEEN_PHASE: i32 = 900;
+pub const KING_PHASE: i32 = 0;
 
 pub const BISHOP_PAIR_BONUS: i32 = 40;
 pub const DOUBLED_PAWN_PENALTY: i32 = 20;
@@ -94,3 +104,7 @@ pub const HALF_MOVE_DRAW_LIMIT: u32 = 100;
 pub const MATE_SCORE_BASE: i32 = 1_000_000;
 
 pub const ENDGAME_MATERIALS: i32 = 1400;
+
+pub const INF: i32 = 1_000_000_000;
+pub const MATE_SCORE: i32 = MATE_SCORE_BASE;
+pub const MAX_PLY: usize = 64;

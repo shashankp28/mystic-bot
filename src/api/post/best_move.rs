@@ -1,8 +1,7 @@
-use std::str::FromStr;
-use chess::{ChessMove, MoveGen};
+use std::{ sync::atomic::Ordering, time::{ Duration, Instant } };
 use axum::{ extract::{ State, Json }, http::StatusCode, response::IntoResponse };
 use serde::{ Deserialize, Serialize };
-use crate::{api::post::make_move::{MoveRequest, MoveResponse}, bot::{ include::types::ServerState }};
+use crate::{ bot::include::types::{ SearchHandle, ServerState } };
 
 #[derive(Debug, Deserialize)]
 pub struct BestMoveQuery {
@@ -22,73 +21,74 @@ pub struct BestMoveResponse {
     pub depth: u8,
     pub new_position: String,
 }
-
-pub async fn make_move_handler(
+pub async fn best_move_handler(
     State(state): State<ServerState>,
-    Json(payload): Json<MoveRequest>
+    Json(payload): Json<BestMoveQuery>
 ) -> impl IntoResponse {
     let mut engine = match state.engines.get_mut(&payload.game_id) {
         Some(e) => e,
         None => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(MoveResponse {
-                    message: format!("Game ID '{}' not found", payload.game_id),
-                    new_fen: "".to_string(),
-                }),
-            ).into_response();
+            return (StatusCode::NOT_FOUND, Json(create_empty_response())).into_response();
         }
     };
 
-    let Ok(chess_move) = ChessMove::from_str(&payload.mov) else {
-        let fen = engine.current_board.to_string();
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(MoveResponse {
-                message: "Invalid move format".to_string(),
-                new_fen: fen,
-            }),
-        ).into_response();
-    };
-
-    let mut legal_moves = MoveGen::new_legal(&engine.current_board);
-    if !legal_moves.any(|m| m == chess_move) {
-        let fen = engine.current_board.to_string();
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(MoveResponse {
-                message: "Illegal move".to_string(),
-                new_fen: fen,
-            }),
-        ).into_response();
+    // 1. If we aren't already searching, start a search
+    if engine.search.is_none() {
+        engine.search = Some(
+            SearchHandle::start(
+                engine.current_board.clone(),
+                engine.transposition_table.clone(),
+                engine.history.clone() // FIXED: Added missing 3rd argument
+            )
+        );
     }
 
-    if let Some(mut old_search) = engine.search.take() {
-        old_search.stop();
+    // 2. Wait for the search or time out
+    let wait_ms = payload.time_limit_ms.unwrap_or(2000);
+    let start_wait = Instant::now();
+
+    // Simple polling loop for the stop signal
+    while start_wait.elapsed().as_millis() < (wait_ms as u128) {
+        let is_done = engine.search
+            .as_ref()
+            .map(|s| s.stop.load(Ordering::SeqCst)) // FIXED: Ordering now in scope
+            .unwrap_or(true);
+
+        if is_done {
+            break;
+        }
+
+        // FIXED: sleep and Duration now in scope
+        tokio::time::sleep(Duration::from_millis(10)).await;
     }
 
-    engine.current_board = engine.current_board.make_move_new(chess_move);
-    engine.history.increment(engine.current_board.get_hash());
+    // 3. Stop search and get result
+    if let Some(mut handle) = engine.search.take() {
+        handle.stop();
+        let result = handle.best.lock().unwrap().clone();
 
-    engine.search = Some(
-        crate::bot::include::types::SearchHandle::start(
-            engine.current_board,
-            engine.transposition_table.clone(),
-            engine.history.clone()
-        )
-    );
+        if let Some(res) = result {
+            return (
+                StatusCode::OK,
+                Json(BestMoveResponse {
+                    best_move: res.best_move.to_string(),
+                    line: res.pv
+                        .iter()
+                        .map(|m| m.to_string())
+                        .collect(),
+                    eval: res.eval,
+                    nodes: res.nodes,
+                    time: start_wait.elapsed().as_millis(),
+                    depth: res.depth,
+                    new_position: engine.current_board.to_string(),
+                }),
+            ).into_response();
+        }
+    }
 
-    let new_fen = engine.current_board.to_string();
-    drop(engine);
-
-    (
-        StatusCode::OK,
-        Json(MoveResponse {
-            message: format!("Move {} played successfully. Bot is thinking...", payload.mov),
-            new_fen,
-        }),
-    ).into_response()
+    (StatusCode::INTERNAL_SERVER_ERROR, Json(create_empty_response())).into_response()
 }
+
 /// Helper for clean error responses
 fn create_empty_response() -> BestMoveResponse {
     BestMoveResponse {
