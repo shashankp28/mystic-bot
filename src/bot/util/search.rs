@@ -73,6 +73,7 @@ impl SearchHandle {
                 break;
             }
         }
+        context.stop_signal.store(true, Ordering::SeqCst)
     }
 }
 
