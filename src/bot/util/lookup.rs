@@ -64,15 +64,26 @@ impl TranspositionTable {
         }
     }
 
-    pub fn get(&self, key: &(u64, u8)) -> Option<TTEntry> {
-        self.inner.lock().unwrap().get(key).cloned()
+    pub fn get(&self, hash: u64) -> Option<TTEntry> {
+        let mut lock = self.inner.lock().unwrap();
+        lock.get(&hash).cloned()
     }
 
-    pub fn put(&self, key: (u64, u8), entry: TTEntry) {
-        self.inner.lock().unwrap().put(key, entry);
+    pub fn put(&self, hash: u64, entry: TTEntry) {
+        let mut lock = self.inner.lock().unwrap();
+
+        // Always replace if new depth is higher, or if it's a newer search (age)
+        if let Some(existing) = lock.get(&hash) {
+            if entry.depth >= existing.depth {
+                lock.put(hash, entry);
+            }
+        } else {
+            lock.put(hash, entry);
+        }
     }
 
-    pub fn clone_arc(&self) -> Arc<Mutex<LruCache<(u64, u8), TTEntry>>> {
-        Arc::clone(&self.inner)
+    pub fn clear(&self) {
+        let mut lock = self.inner.lock().unwrap();
+        lock.clear();
     }
 }

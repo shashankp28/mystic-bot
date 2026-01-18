@@ -1,6 +1,8 @@
+use std::str::FromStr;
+use chess::{ChessMove, MoveGen};
 use axum::{ extract::{ State, Json }, http::StatusCode, response::IntoResponse };
 use serde::{ Deserialize, Serialize };
-use crate::bot::{ include::types::ServerState };
+use crate::{api::post::make_move::{MoveRequest, MoveResponse}, bot::{ include::types::ServerState }};
 
 #[derive(Debug, Deserialize)]
 pub struct BestMoveQuery {
@@ -13,7 +15,7 @@ pub struct BestMoveQuery {
 #[derive(Debug, Serialize)]
 pub struct BestMoveResponse {
     pub best_move: String,
-    pub line: Vec<String>, // Full principal variation
+    pub line: Vec<String>,
     pub eval: i32,
     pub nodes: u64,
     pub time: u128,
@@ -21,71 +23,72 @@ pub struct BestMoveResponse {
     pub new_position: String,
 }
 
-pub async fn best_move_handler(
+pub async fn make_move_handler(
     State(state): State<ServerState>,
-    Json(params): Json<BestMoveQuery>
+    Json(payload): Json<MoveRequest>
 ) -> impl IntoResponse {
-    // 1. Get the game engine (mutable access needed to update board/search)
-    let Some(mut engine) = state.engines.get_mut(&params.game_id) else {
-        return (StatusCode::NOT_FOUND, Json(create_empty_response())).into_response();
-    };
-
-    // 2. Ensure a search is actually running
-    let Some(search_handle) = engine.search.as_ref() else {
-        return (StatusCode::SERVICE_UNAVAILABLE, Json(create_empty_response())).into_response();
-    };
-
-    // 3. Safely lock and clone the latest best result found by the thread
-    let snapshot_opt = search_handle.best.lock().unwrap().clone();
-
-    let Some(snapshot) = snapshot_opt else {
-        // Search thread exists but hasn't completed Depth 1 yet
-        return (StatusCode::ACCEPTED, Json(create_empty_response())).into_response();
-    };
-
-    let mut new_position_fen = engine.current_board.to_string();
-    let best_move = snapshot.best_move;
-
-    // 4. Update state if requested (Advance the game)
-    if params.update_state.unwrap_or(false) {
-        // 1. Take the handle out of the engine (leaves None in its place)
-        if let Some(old_search) = engine.search.take() {
-            // 2. Signal stop
-            old_search.stop.store(true, std::sync::atomic::Ordering::SeqCst);
-
-            // 3. Wait for the thread to finish
-            let _ = old_search.handle.join();
+    let mut engine = match state.engines.get_mut(&payload.game_id) {
+        Some(e) => e,
+        None => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(MoveResponse {
+                    message: format!("Game ID '{}' not found", payload.game_id),
+                    new_fen: "".to_string(),
+                }),
+            ).into_response();
         }
+    };
 
-        // 4. Update the board and history
-        engine.current_board = engine.current_board.make_move_new(best_move);
-        engine.history.increment(engine.current_board.get_hash());
-        new_position_fen = engine.current_board.to_string();
+    let Ok(chess_move) = ChessMove::from_str(&payload.mov) else {
+        let fen = engine.current_board.to_string();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(MoveResponse {
+                message: "Invalid move format".to_string(),
+                new_fen: fen,
+            }),
+        ).into_response();
+    };
 
-        // 5. Start a fresh search
-        engine.search = Some(
-            start_background_search(engine.current_board, engine.transposition_table.clone())
-        );
+    let mut legal_moves = MoveGen::new_legal(&engine.current_board);
+    if !legal_moves.any(|m| m == chess_move) {
+        let fen = engine.current_board.to_string();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(MoveResponse {
+                message: "Illegal move".to_string(),
+                new_fen: fen,
+            }),
+        ).into_response();
     }
 
-    // 5. Build the successful response
+    if let Some(mut old_search) = engine.search.take() {
+        old_search.stop();
+    }
+
+    engine.current_board = engine.current_board.make_move_new(chess_move);
+    engine.history.increment(engine.current_board.get_hash());
+
+    engine.search = Some(
+        crate::bot::include::types::SearchHandle::start(
+            engine.current_board,
+            engine.transposition_table.clone(),
+            engine.history.clone()
+        )
+    );
+
+    let new_fen = engine.current_board.to_string();
+    drop(engine);
+
     (
         StatusCode::OK,
-        Json(BestMoveResponse {
-            best_move: best_move.to_string(),
-            line: snapshot.pv
-                .iter()
-                .map(|m| m.to_string())
-                .collect(),
-            eval: snapshot.eval,
-            nodes: snapshot.nodes,
-            time: 0, // You can track start_time in SearchHandle if needed
-            depth: snapshot.depth,
-            new_position: new_position_fen,
+        Json(MoveResponse {
+            message: format!("Move {} played successfully. Bot is thinking...", payload.mov),
+            new_fen,
         }),
     ).into_response()
 }
-
 /// Helper for clean error responses
 fn create_empty_response() -> BestMoveResponse {
     BestMoveResponse {

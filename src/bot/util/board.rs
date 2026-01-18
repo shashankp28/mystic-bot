@@ -1,70 +1,18 @@
-use std::collections::HashSet;
-use chess::{ Board, ChessMove, File, MoveGen, Piece };
-use crate::bot::{
-    include::types::{
-        SpecialMove,
-        CAPTURE_BONUS,
-        CASTLING_BONUS,
-        CHECK_BONUS,
-        ENDGAME_MATERIALS,
-        PROMOTION_BONUS,
-    },
-    util::piece::piece_value,
-};
+use chess::{ Board, ChessMove, MoveGen, Piece };
+use crate::bot::{ include::types::ENDGAME_MATERIALS, util::piece::piece_value };
 
 pub trait BoardExt {
-    fn classify_move(&self, mv: ChessMove) -> HashSet<SpecialMove>;
     fn piece_moved(&self, mv: ChessMove) -> Option<Piece>;
     fn is_en_passant(&self, mv: ChessMove) -> bool;
     fn is_attack(&self, mv: ChessMove) -> bool;
     fn move_priority(&self, mv: ChessMove) -> i32;
     fn halfmove_clock(&self) -> u32;
-    fn capture_pieces(&self, mv: ChessMove) -> Option<(Piece, Piece)>;
     fn material_score(&self, color: chess::Color) -> i32;
     fn noiseness(&self) -> i32;
     fn is_endgame(&self) -> bool;
 }
 
 impl BoardExt for Board {
-    fn classify_move(&self, mv: ChessMove) -> HashSet<SpecialMove> {
-        let mut result = HashSet::new();
-        let new_board = self.make_move_new(mv);
-
-        if new_board.checkers().popcnt() > 0 {
-            result.insert(SpecialMove::Check);
-        }
-
-        if mv.get_promotion().is_some() {
-            result.insert(SpecialMove::Promotion);
-        }
-
-        if self.piece_on(mv.get_dest()).is_some() {
-            result.insert(SpecialMove::Capture);
-        } else if self.is_en_passant(mv) {
-            result.insert(SpecialMove::Capture);
-            result.insert(SpecialMove::EnPassant);
-        }
-
-        if self.is_attack(mv) {
-            result.insert(SpecialMove::Attack);
-        }
-
-        if let Some(piece) = self.piece_on(mv.get_source()) {
-            if piece == Piece::King {
-                let src_file = mv.get_source().get_file();
-                let dst_file = mv.get_dest().get_file();
-                // Assuming standard chess coordinates (file e to g or c)
-                if src_file == File::E && dst_file == File::G {
-                    result.insert(SpecialMove::CastleKingside);
-                } else if src_file == File::E && dst_file == File::C {
-                    result.insert(SpecialMove::CastleQueenside);
-                }
-            }
-        }
-
-        result
-    }
-
     fn piece_moved(&self, mv: ChessMove) -> Option<Piece> {
         self.piece_on(mv.get_source())
     }
@@ -91,50 +39,36 @@ impl BoardExt for Board {
     }
 
     fn move_priority(&self, mv: ChessMove) -> i32 {
-        let mut has_check = false;
-        let mut has_promotion = false;
-        let mut has_capture = false;
-        let mut has_castling = false;
-        let mut capture_value_sum = 0;
+        let mut score = 0;
+        let source_piece = self.piece_on(mv.get_source());
+        let dest_piece = self.piece_on(mv.get_dest());
 
-        let tags = self.classify_move(mv);
-        if tags.contains(&SpecialMove::Check) {
-            has_check = true;
-        }
-        if tags.contains(&SpecialMove::Promotion) {
-            has_promotion = true;
-        }
-        if tags.contains(&SpecialMove::Capture) {
-            has_capture = true;
-            let captured_value = if self.is_en_passant(mv) {
-                piece_value(Piece::Pawn)
-            } else {
-                self.piece_on(mv.get_dest()).map(piece_value).unwrap_or(0)
-            };
-            capture_value_sum += captured_value;
-        }
-        if
-            tags.contains(&SpecialMove::CastleKingside) ||
-            tags.contains(&SpecialMove::CastleQueenside)
-        {
-            has_castling = true;
+        // 1. MVV-LVA (Most Valuable Victim - Least Valuable Aggressor)
+        if let Some(victim) = dest_piece {
+            score +=
+                10000 + piece_value(victim) - piece_value(source_piece.unwrap_or(Piece::Pawn)) / 10;
         }
 
-        let mut tactical_bonus = 0;
-        if has_check {
-            tactical_bonus += CHECK_BONUS;
-        }
-        if has_promotion {
-            tactical_bonus += PROMOTION_BONUS;
-        }
-        if has_capture {
-            tactical_bonus += CAPTURE_BONUS;
-        }
-        if has_castling {
-            tactical_bonus += CASTLING_BONUS;
+        // 2. En Passant is a capture
+        if self.is_en_passant(mv) {
+            score += 10000 + piece_value(Piece::Pawn);
         }
 
-        tactical_bonus + capture_value_sum
+        // 3. Promotions are high priority
+        if let Some(promo) = mv.get_promotion() {
+            score += 8000 + piece_value(promo);
+        }
+
+        // 4. Castling (Better to search early for king safety)
+        if source_piece == Some(Piece::King) {
+            let src_file = mv.get_source().get_file();
+            let dst_file = mv.get_dest().get_file();
+            if ((src_file as i32) - (dst_file as i32)).abs() > 1 {
+                score += 500;
+            }
+        }
+
+        score
     }
 
     fn noiseness(&self) -> i32 {
@@ -149,28 +83,6 @@ impl BoardExt for Board {
             .nth(4)
             .and_then(|s| s.parse::<u32>().ok())
             .unwrap_or(0)
-    }
-
-    fn capture_pieces(&self, mv: ChessMove) -> Option<(Piece, Piece)> {
-        if !self.classify_move(mv).contains(&SpecialMove::Capture) {
-            return None;
-        }
-
-        let attacker = self.piece_on(mv.get_source())?;
-
-        let victim = if self.is_en_passant(mv) {
-            // For en passant, the victim is always one rank behind the destination
-            let dest = mv.get_dest();
-            let victim_sq = match self.side_to_move() {
-                chess::Color::White => dest.down()?, // One rank below
-                chess::Color::Black => dest.up()?, // One rank above
-            };
-            self.piece_on(victim_sq)?
-        } else {
-            self.piece_on(mv.get_dest())?
-        };
-
-        Some((attacker, victim))
     }
 
     fn material_score(&self, color: chess::Color) -> i32 {

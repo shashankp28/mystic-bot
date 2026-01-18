@@ -1,17 +1,8 @@
-use axum::{ extract::{ State, Json }, response::IntoResponse, http::StatusCode };
+use axum::{ extract::Json, response::IntoResponse, http::StatusCode };
 use serde::{ Deserialize, Serialize };
 use std::{ str::FromStr, sync::Arc, time::Instant };
 use chess::Board;
-use crate::bot::{
-    algorithm::root::search,
-    include::types::{
-        EngineState,
-        RepetitionHistory,
-        ServerState,
-        TranspositionTable,
-        TT_TABLE_SIZE,
-    },
-};
+use crate::bot::{ include::types::{ SearchHandle, TT_TABLE_SIZE, TranspositionTable }, util::search::estimate_search_time };
 
 #[derive(Debug, Deserialize)]
 pub struct EvalRequest {
@@ -30,11 +21,8 @@ pub struct BestMoveResponse {
     pub time: u128, // Time taken in milliseconds
     pub depth: u8, // Maximum search depth reached
 }
-pub async fn eval_position_handler(
-    State(state): State<ServerState>,
-    Json(payload): Json<EvalRequest>
-) -> impl IntoResponse {
-    // 1. Setup the Board
+
+pub async fn eval_position_handler(Json(payload): Json<EvalRequest>) -> impl IntoResponse {
     let board = match Board::from_str(&payload.current_fen) {
         Ok(b) => b,
         Err(_) => {
@@ -42,7 +30,13 @@ pub async fn eval_position_handler(
         }
     };
 
-    // 2. Setup the Transposition Table
+    let mut history = crate::bot::include::types::RepetitionHistory::new();
+    for fen in &payload.history {
+        if let Ok(b) = Board::from_str(fen) {
+            history.increment(b.get_hash());
+        }
+    }
+
     let tt = TranspositionTable {
         inner: Arc::new(
             std::sync::Mutex::new(
@@ -50,24 +44,31 @@ pub async fn eval_position_handler(
             )
         ),
     };
-
-    // 3. START the background engine search immediately
-    let search_handle = start_background_search(board, tt.clone());
+    let estimated_ms = estimate_search_time(payload.time_left_ms, payload.time_limit_ms);
+    let time_limit = std::time::Duration::from_millis(estimated_ms as u64);
+    let mut search_handle = SearchHandle::start(board, tt, history);
     let start_instant = Instant::now();
 
-    // 4. WAIT for exactly 5 seconds (without blocking the server)
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    let stop_signal = Arc::clone(&search_handle.stop);
+    tokio::select! {
+        _ = tokio::time::sleep(time_limit) => {
+            // Timer expired
+        }
+        _ = async {
+            loop {
+                if stop_signal.load(std::sync::atomic::Ordering::Relaxed) {
+                    break;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
+        } => {
+            // Search thread signaled it finished early (e.g. found mate)
+        }
+    }
 
-    // 5. STOP the search and JOIN the thread
-    search_handle.stop.store(true, std::sync::atomic::Ordering::SeqCst);
+    search_handle.stop();
 
-    // We move the handle out to join it
-    let _ = search_handle.handle.join();
-
-    // 6. EXTRACT the final results from the Mutex
     let final_snapshot = search_handle.best.lock().unwrap().clone();
-
-    // 7. Cleanup is automatic here: search_handle and tt go out of scope and are dropped.
 
     match final_snapshot {
         Some(result) => {
@@ -86,10 +87,7 @@ pub async fn eval_position_handler(
                 }),
             ).into_response()
         }
-        None => {
-            // This happens if the search didn't even finish Depth 1 in 5 seconds (unlikely)
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(create_empty_response())).into_response()
-        }
+        None => (StatusCode::INTERNAL_SERVER_ERROR, Json(create_empty_response())).into_response(),
     }
 }
 

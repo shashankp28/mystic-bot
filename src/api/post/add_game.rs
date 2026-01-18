@@ -1,7 +1,6 @@
 use axum::{ extract::State, response::IntoResponse, Json, http::StatusCode };
-use lru::LruCache;
 use serde::{ Deserialize, Serialize };
-use std::{ str::FromStr, sync::{Arc, Mutex} };
+use std::{ str::FromStr, sync::{ Arc, Mutex } };
 use crate::bot::include::types::{
     EngineState,
     RepetitionHistory,
@@ -27,7 +26,6 @@ pub async fn new_game_handler(
     State(state): State<ServerState>,
     Json(payload): Json<NewGameRequest>
 ) -> impl IntoResponse {
-    // 1. Check for existing game to prevent duplicates
     if state.engines.contains_key(&payload.game_id) {
         return (
             StatusCode::CONFLICT,
@@ -37,7 +35,6 @@ pub async fn new_game_handler(
         );
     }
 
-    // 2. Parse the FEN string into a Board
     let board = match Board::from_str(&payload.current_fen) {
         Ok(b) => b,
         Err(_) => {
@@ -50,7 +47,7 @@ pub async fn new_game_handler(
         }
     };
 
-    // 3. Build repetition history from the move list/FEN history
+    // 1. Properly rebuild the repetition history from the provided FEN list
     let mut history = RepetitionHistory::new();
     for fen in &payload.history {
         if let Ok(b) = Board::from_str(fen) {
@@ -58,28 +55,30 @@ pub async fn new_game_handler(
         }
     }
 
-    // 4. Initialize the Transposition Table (TT)
-    // Note: TT_TABLE_SIZE should be passed to the LruCache constructor
+    // 2. Initialize the Transposition Table
     let tt = TranspositionTable {
-        inner: Arc::new(Mutex::new(LruCache::new(
-            std::num::NonZeroUsize::new(TT_TABLE_SIZE).unwrap()
-        ))),
+        inner: Arc::new(
+            Mutex::new(lru::LruCache::new(std::num::NonZeroUsize::new(TT_TABLE_SIZE).unwrap()))
+        ),
     };
 
-    // 5. Launch the background search thread
-    // We pass clones of Board and TT because the search thread needs its own ownership
-    let search_handle = start_background_search(board, tt.clone());
+    // 3. Start the background search thread
+    // Note: history is moved into start(), and tt is cloned (Arc-based)
+    let search_handle = crate::bot::include::types::SearchHandle::start(
+        board,
+        tt.clone(),
+        history.clone()
+    );
 
-    // 6. Construct the EngineState using our established Blueprint
+    // 4. Build the engine state
     let engine = EngineState {
         game_id: payload.game_id.clone(),
-        current_board: board, // Aligned with blueprint
-        history,              // Aligned with blueprint
+        current_board: board,
+        history,
         transposition_table: tt,
         search: Some(search_handle),
     };
 
-    // 7. Store the game in the global state
     state.engines.insert(payload.game_id.clone(), engine);
 
     (
