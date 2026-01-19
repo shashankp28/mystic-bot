@@ -1,6 +1,5 @@
 use std::{ sync::{ atomic::Ordering } };
 use chess::{ ChessMove, MoveGen };
-use tracing::debug;
 use crate::bot::algorithm::quiescence::quiescence;
 use crate::bot::include::types::*;
 use crate::bot::util::board::BoardExt;
@@ -40,7 +39,6 @@ pub fn negamax(
             let mate_score = -MATE_SCORE_BASE + (ply as i32);
             (mate_score, vec![])
         } else {
-            debug!(ply, "Stalemate detected");
             (0, vec![])
         };
     }

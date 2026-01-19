@@ -1,8 +1,6 @@
 use chess::{Board, Color, Piece, Square};
 use crate::bot::{include::types::*, util::piece::{phase_value, piece_value}};
 
-const MAX_PHASE: i32 = 24;
-
 #[inline(always)]
 fn pst_value(piece: Piece, sq: Square, color: Color, phase: i32) -> i32 {
     let rank = sq.get_rank().to_index();
