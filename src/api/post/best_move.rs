@@ -2,7 +2,10 @@ use std::{ sync::atomic::Ordering, time::{ Duration, Instant } };
 use axum::{ extract::{ State, Json }, http::StatusCode, response::IntoResponse };
 use serde::{ Deserialize, Serialize };
 use tracing::{ info, warn, debug, error, instrument };
-use crate::bot::include::types::{ SearchHandle, ServerState };
+use crate::bot::{
+    include::types::{ SearchHandle, ServerState },
+    util::search::estimate_search_time,
+};
 
 #[derive(Debug, Deserialize)]
 pub struct BestMoveQuery {
@@ -47,7 +50,7 @@ pub async fn best_move_handler(
         );
     }
 
-    let wait_ms = payload.time_limit_ms.unwrap_or(2000);
+    let wait_ms = estimate_search_time(payload.time_left_ms, payload.time_limit_ms);
     let start_wait = Instant::now();
 
     while start_wait.elapsed().as_millis() < (wait_ms as u128) {
@@ -65,7 +68,7 @@ pub async fn best_move_handler(
 
     if let Some(mut handle) = engine.search.take() {
         let result = handle.best.lock().unwrap().clone();
-        
+
         if let Some(res) = result {
             if payload.update_state.unwrap_or(false) {
                 handle.stop();
