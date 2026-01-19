@@ -1,6 +1,6 @@
 use std::{ sync::{ atomic::Ordering } };
 use chess::{ ChessMove, MoveGen };
-use tracing::{ info, debug };
+use tracing::debug;
 use crate::bot::algorithm::quiescence::quiescence;
 use crate::bot::include::types::*;
 use crate::bot::util::board::BoardExt;
@@ -38,7 +38,6 @@ pub fn negamax(
     if moves.is_empty() {
         return if context.board.checkers().popcnt() > 0 {
             let mate_score = -MATE_SCORE_BASE + (ply as i32);
-            info!(ply, score = mate_score, "Checkmate detected");
             (mate_score, vec![])
         } else {
             debug!(ply, "Stalemate detected");

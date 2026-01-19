@@ -59,7 +59,6 @@ impl GlobalMap {
         Arc::clone(&OPENING_DB)
     }
 
-    // NOTE: All these assume that Index 0 === a1 ( Top-Left of the board )
     pub const PAWN_TABLE: [[i32; 8]; 8] = [
         [0, 0, 0, 0, 0, 0, 0, 0],
         [5, 10, 10, -20, -20, 10, 10, 5],

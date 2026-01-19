@@ -16,7 +16,6 @@ fn pst_value(piece: Piece, sq: Square, color: Color, phase: i32) -> i32 {
         Piece::Rook   => GlobalMap::ROOK_TABLE[row][file],
         Piece::Queen  => GlobalMap::QUEEN_TABLE[row][file],
 
-        // Tapered king PST (no switching)
         Piece::King => {
             let mg = GlobalMap::KING_TABLE_START[row][file];
             let eg = GlobalMap::KING_TABLE_END[row][file];
@@ -58,7 +57,6 @@ pub fn evaluate_board(board: &Board) -> i32 {
     let mut white_bishops = 0;
     let mut black_bishops = 0;
 
-    // FIRST PASS: material + phase
     for sq in chess::ALL_SQUARES {
         if let Some(piece) = board.piece_on(sq) {
             let color = board.color_on(sq).unwrap();
@@ -79,7 +77,6 @@ pub fn evaluate_board(board: &Board) -> i32 {
 
     phase = phase.min(MAX_PHASE);
 
-    // SECOND PASS: PSTs
     for sq in chess::ALL_SQUARES {
         if let Some(piece) = board.piece_on(sq) {
             let color = board.color_on(sq).unwrap();
@@ -88,7 +85,6 @@ pub fn evaluate_board(board: &Board) -> i32 {
         }
     }
 
-    // Bishop pair (small, stable)
     if white_bishops >= 2 {
         score += 30;
     }
@@ -96,7 +92,6 @@ pub fn evaluate_board(board: &Board) -> i32 {
         score -= 30;
     }
 
-    // Minimal pawn structure
     score += doubled_pawn_penalty(board);
 
     score

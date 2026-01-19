@@ -43,23 +43,19 @@ impl BoardExt for Board {
         let source_piece = self.piece_on(mv.get_source());
         let dest_piece = self.piece_on(mv.get_dest());
 
-        // 1. MVV-LVA (Most Valuable Victim - Least Valuable Aggressor)
         if let Some(victim) = dest_piece {
             score +=
                 10000 + piece_value(victim) - piece_value(source_piece.unwrap_or(Piece::Pawn)) / 10;
         }
 
-        // 2. En Passant is a capture
         if self.is_en_passant(mv) {
             score += 10000 + piece_value(Piece::Pawn);
         }
 
-        // 3. Promotions are high priority
         if let Some(promo) = mv.get_promotion() {
             score += 8000 + piece_value(promo);
         }
 
-        // 4. Castling (Better to search early for king safety)
         if source_piece == Some(Piece::King) {
             let src_file = mv.get_source().get_file();
             let dst_file = mv.get_dest().get_file();

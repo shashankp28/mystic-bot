@@ -24,13 +24,13 @@ impl SearchHandle {
 
         let stop_clone = Arc::clone(&stop);
         let best_clone = Arc::clone(&best);
-        let tt_clone = tt.clone(); // This now clones the internal Arc, which is what we want
+        let tt_clone = tt.clone();
 
         let handle = thread::spawn(move || {
             let mut context = SearchContext {
                 board,
                 history,
-                tt: tt_clone, // This matches the type in SearchContext now
+                tt: tt_clone,
                 stop_signal: stop_clone,
                 killer_moves: [[None; 2]; 64],
                 history_scores: [[0; 64]; 64],
